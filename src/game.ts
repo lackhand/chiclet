@@ -1,4 +1,4 @@
-import * as RenJS from "renjs";
+import RenJS from "renjs";
 // import Phaser from "phaser-ce";
 
 const config = {
@@ -44,7 +44,6 @@ const config = {
   storyAccessibility: "story/a11y.yaml",
 };
 
-console.log(RenJS);
 const RenJSGame = new RenJS.game(config);
 export default RenJSGame;
 RenJSGame.launch();
