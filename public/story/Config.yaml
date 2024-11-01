@@ -1,22 +1,22 @@
 positions:
   OUTLEFT: #Outside of the screen, left side
     x: -133
-    y: 600 #The y should be at the bottom of the screen
-  LEFT: 
+    "y": 450 #The y should be at the bottom of the screen
+  LEFT:
     x: 133
-    y: 600
+    "y": 450
   DEFAULT:
     x: 400
-    y: 600
-  CENTER: 
+    "y": 450
+  CENTER:
     x: 400
-    y: 600
-  RIGHT: 
+    "y": 450
+  RIGHT:
     x: 666
-    y: 600
+    "y": 450
   OUTRIGHT: #Outside of the screen, right side
     x: 933
-    y: 600
+    "y": 450
 
 transitions:
   defaults: # Default transition when showing/hiding
@@ -33,7 +33,7 @@ transitions:
   skippable: false
 
 # Fade transition time, in miliseconds
-fadetime : 750
+fadetime: 750
 # Time in each action that waits (e.g. text and say) when skipping
 skiptime: 50
 # Time in each action that waits (e.g. text and say) when auto playing
@@ -43,7 +43,7 @@ logChoices: true
 # Default waiting time for timeouts if not specified
 timeout: 5000
 # punctuation can add extra time when showing text in the message box, per special character
-punctuationMarks: [".",",","!","?",":","-"]
+punctuationMarks: [".", ",", "!", "?", ":", "-"]
 # when a punctuation mark is shown, X extra puntuation wait times will be spent after adding the next character
 # the total amount of wait will be this value multiplied the text speed
 punctuationWait: 5

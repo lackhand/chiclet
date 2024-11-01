@@ -1,18 +1,38 @@
-
 backgrounds:
   room: assets/backgrounds/room_day.jpg
   room_night: assets/backgrounds/room_night.jpg
   room_night_light: assets/backgrounds/room_night_light.jpg
 
 characters:
-  deuzi:
-    displayName: Deuzilene
-    speechColour: "#ca90cf"
+  chiclet:
+    displayName: Chiclet
+    # Detective Brogan Chiclet
+    speechColour: "Wheat"
     looks:
-      normal: assets/characters/Char3NormalSchool.png
-      happy: assets/characters/Char3HappySchool.png
-      angry: assets/characters/Char3AngrySchool.png
-
+      normal: assets/characters/chiclet/idle.png
+      happy: assets/characters/chiclet/behindBack.png
+      angry: assets/characters/chiclet/shove.png
+      talky: assets/characters/chiclet/talk.png
+      thinky: assets/characters/chiclet/think.png
+  pallas:
+    displayName: Pallas
+    # Pallas Avrenim
+    speechColor: "MintCream"
+    looks:
+      normal: assets/characters/pallas/idle.png
+      happy: assets/characters/pallas/cheer0.png
+      angry: assets/characters/pallas/hold.png
+      talky: assets/characters/pallas/talk.png
+      thinky: assets/characters/pallas/think.png
+  beep:
+    displayName: B33P-atron
+    speechColor: "LimeGreen"
+    looks:
+      normal: assets/characters/beep/idle.png
+      happy: assets/characters/beep/cheer0.png
+      angry: assets/characters/beep/drag.png
+      talky: assets/characters/beep/talk.png
+      thinky: assets/characters/beep/think.png
 cgs:
   phone1: assets/objects/phone1.png
   phone2: assets/objects/phone2.png
