@@ -1,4 +1,4 @@
-import RenJS from "renjs";
+// import RenJS from "renjs";
 // import Phaser from "phaser-ce";
 
 const config = {
