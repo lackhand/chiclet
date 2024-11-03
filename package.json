@@ -1,19 +1,70 @@
 {
-  "name": "chiclet",
-  "private": true,
-  "version": "0.0.0",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
+  "private": "true",
   "type": "module",
-  "browser": "dist/main.js",
+  "name": "chiclet",
+  "productName": "Chiclet",
+  "version": "0.1.0",
+  "main": "monogatari/electron/index.cjs",
+  "browser": "dist/main.ts",
+  "description": "A description of your game",
+  "author": "Your Name",
+  "license": "MIT",
+  "homepage": "https://example.com",
+  "build": {
+    "appId": "com.example.mygame",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icons/icon.ico"
+    },
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        "zip"
+      ],
+      "type": "distribution",
+      "icon": "assets/icons/icon.icns",
+      "entitlements": "monogatari/electron/entitlements.mac.plist",
+      "entitlementsInherit": "monogatari/electron/entitlements.mac.plist",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "linux": {
+      "category": "Game",
+      "target": [
+        "AppImage"
+      ],
+      "synopsis": "A small synopsis of your game",
+      "description": "A more detailed description of your game"
+    },
+    "icon": "assets/icons/512x512.png",
+    "afterSign": "monogatari/electron/notarize.cjs"
+  },
+  "scripts": {
+    "build:native": "yarn electron-builder -mwl",
+    "build:web": "tsc && vite build",
+    "build:windows": "yarn electron-builder -w",
+    "build:mac": "yarn electron-builder -m",
+    "build:linux": "yarn electron-builder -l",
+    "dev": "vite",
+    "start:native": "NODE_OPTIONS=\"--import tsx\" yarn electron . --enable-logging",
+    "start:web": "vite preview"
+  },
   "devDependencies": {
-    "typescript": "~5.6.2",
+    "tsx": "^4.19.2",
+    "@electron/notarize": "^2.4.0",
+    "electron": "^32.0.2",
+    "electron-builder": "^25.0.5",
     "vite": "^5.4.10"
   },
+  "staticFiles": {
+    "staticPath": "assets",
+    "staticOutPath": "assets"
+  },
   "dependencies": {
+    "typescript": "^5.6.3",
+    "typescript-plugin-css-modules": "^5.1.0",
     "vite-tsconfig-paths": "^5.0.1"
   }
 }

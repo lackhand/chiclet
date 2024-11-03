@@ -20,8 +20,9 @@
 
     "sourceMap": true,
     "allowJs": true,
+    "explainFiles": true,
     "declaration": true,
-  
+
     /* Bundler mode */
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
@@ -39,13 +40,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+
+    // "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
-  "include": [
-    "**/*.js",
-    "**/*.ts",
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src", "monogatari", "Globals.d.ts", "service-worker.js"]
 }
