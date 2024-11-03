@@ -1,5 +1,11 @@
-// import RenJS from "renjs";
-// import Phaser from "phaser-ce";
+import "renjs";
+import "phaser-ce";
+
+const RenJS = (window as any).RenJS;
+// export RenJS;
+// export Plugin;
+
+console.log("What now?!", RenJS);
 
 const config = {
   name: "Quickstart",
@@ -25,7 +31,7 @@ const config = {
   guiConfig: "story/GUI.yaml",
   storyConfig: "story/Config.yaml",
   storySetup: "story/Setup.yaml",
-  storyText: ["story/Story.yaml"],
+  storyText: ["story/s0.yaml", "story/s1_1_Bedroom.yaml"],
 
   loadingScreen: {
     background: "assets/leaderloaderbackground.png",

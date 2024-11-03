@@ -1,7 +1,7 @@
 positions:
   OUTLEFT: #Outside of the screen, left side
     x: -133
-    "y": 450 #The y should be at the bottom of the screen
+    "y": 450
   LEFT:
     x: 133
     "y": 450
@@ -30,7 +30,7 @@ transitions:
   textChoices: CUT
   menus: FADE
   # transitions can be skipped by the player by tapping
-  skippable: false
+  skippable: true
 
 # Fade transition time, in miliseconds
 fadetime: 750
