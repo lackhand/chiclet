@@ -1,8 +1,6 @@
-import "./monogatari/debug";
-import Monogatari from "./monogatari";
-import "./main.css";
-import "./options";
-import "./storage";
+'use strict';
+/* global Monogatari */
+/* global monogatari */
 
 /**
  * =============================================================================
@@ -25,14 +23,16 @@ import "./storage";
  * =============================================================================
  **/
 
-// 1. Outside the $_ready function:
-console.log("Before ready");
-Monogatari.$_ready(() => {
-  // 2. Inside the $_ready function:
-  console.log("On ready");
+const { $_ready, $_ } = Monogatari;
 
-  Monogatari.default.init("#monogatari").then(() => {
-    // 3. Inside the init function:
-    console.log("Completely ready");
-  });
+// 1. Outside the $_ready function:
+
+
+$_ready (() => {
+	// 2. Inside the $_ready function:
+
+	monogatari.init ('#monogatari').then (() => {
+		// 3. Inside the init function:
+
+	});
 });
