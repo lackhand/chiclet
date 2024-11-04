@@ -1,4 +1,4 @@
-s1_1_Bedroom:
+s1_1_start:
   - play morningBGM:
   - show pallas: happy AT RIGHT WITH FADE CONTINUE
   - var sleepy: 0
@@ -8,22 +8,22 @@ s1_1_Bedroom:
       - text: "Distant noises in the hallway"
       - "Who is it?":
           - show chiclet: happy AT LEFT WITH CUT CONTINUE
-          - chiclet says happy: "It's your partner!"
+          - chiclet says happy: "It's me!"
       - "Zzz":
   - var sleepy: "{sleepy} + 1"
   - show chiclet: happy AT LEFT WITH FADE CONTINUE
   - choice:
-      - text: "Knock(pause: 100)!"
-      - "Go to the door":
+      - text: "Knock(pause: 100)! It's Brogan!"
+      - "(italic)Allons y!(end)":
           - var wired: "{wired} + 1"
           - scene: s1_1_imup
-      - "Five more minutes... zzz":
+      - "Five more minutes...":
   - var sleepy: "{sleepy} + 1"
   - choice:
       - text: "Knock(pause: 200)!! Knock(pause: 200)!!"
-      - "I'm up! I'm up!":
+      - "I'm coming!":
           - scene: s1_1_imup
-      - "TEN more minutes... zzz!":
+      - "TEN more minutes...!":
   - var sleepy: "{sleepy} + 1"
   - show room: WITH FADE CONTINUE
   - choice:
@@ -37,12 +37,12 @@ s1_1_Bedroom:
 
 s1_1_imup:
   - show room: WITH CUT
-  - if (wired > 2):
-      - pallas says happy: "GooOOOD MORNING!!!"
+  - if ({wired} > 2):
+      - pallas says happy: "Guuuuten TAG!!! <3"
   - else:
       - pallas says thinky: "I'm up! I'm coming!"
   - show chiclet: normal AT CENTER WITH MOVE
-  - if (sleepy > 2):
+  - if ({sleepy} > 2):
       - chiclet says angry: "oh... Pally..."
       - chiclet says normal: "There's been a terrible mistake. They arrested the wrong guy!"
   - else:
@@ -60,30 +60,24 @@ s1_1_whoami:
   - show chiclet: WITH CUT CONTINUE
   - show room: WITH FADE
   - choice:
-      - chiclet says normal: "Are you ready to get started? We gotta go!"
+      - chiclet says normal: "Anything you need before we get going?"
       - No!:
+          - chiclet says thinky: "I'll fill you in on the way to the scene: ..."
+      - Yes!:
           - choice:
               - "Promise me I can sleep in the car":
                   - var sleepy: "{sleepy} + 1"
                   - chiclet says thinky: "Oh... Pally..."
               - "Uh... lemme just brush my teeth.":
                   - var stinky: 0
-                  - chiclet says angry: "*There's no time, we gotta go, Pally!*"
-              - "Nevermind. Adventure!":
+                  - chiclet says angry: "I've got mouthwash in the car. Let's go!"
+              - "(italic)En Garde(end), old friend!":
                   - var wired: "{wired} + 1"
                   - chiclet says happy: That's the spirit!
-      - Yes!:
-          - chiclet says thinky: "I'll fill you in on the way to the scene: ..."
   - if (sleepy > 2):
-      - chiclet says thinky: "You were a lot more fun before..."
+      - chiclet says thinky: "Gee, Pally. I'm sorry to get you up."
   - else:
       - var boring: 0
-  - show chiclet: angry AT FARLEFT WITH MOVE CONTINUE
-  - show pallas: angry AT FARLEFT WITH MOVE
-  - scene: s1_1_recap
-
-s1_1_recap:
-  - show pallas: AT CENTER WITH MOVE
-  - pallas says normal: "To be continued!"
-  - pallas says normal: "sleepy: {sleepy}, stinky: {stinky}, wired: {wired}"
-  - scene: s0_End
+  - show chiclet: angry AT OUTLEFT WITH MOVE CONTINUE
+  - show pallas: angry AT OUTLEFT WITH MOVE
+  - scene: s1_2_start

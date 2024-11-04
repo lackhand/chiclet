@@ -17,6 +17,12 @@ positions:
   OUTRIGHT: #Outside of the screen, right side
     x: 933
     "y": 450
+  TOPLEFT:
+    x: 266
+    "y": 150
+  TOPRIGHT:
+    x: 533
+    "y": 150
 
 transitions:
   defaults: # Default transition when showing/hiding

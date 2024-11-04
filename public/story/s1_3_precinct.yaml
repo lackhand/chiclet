@@ -1,0 +1,24 @@
+s1_3_start:
+  - show chiclet: AT CENTER CONTINUE
+  - show pallas: AT LEFT CONTINUE
+  - show weaver angry: AT RIGHT CONTINUE
+  - show holding:
+  - text: "Holding cells. Visitors are separated by glass. Phones to talk."
+  - chiclet says talky: "O-kay Mr. Weaver sir, this is Pally -- the lady I was telling you about."
+  - pallas says thinky: "Gee Chiclet, you realy like this guy!"
+  - chiclet says: "Oh Pally. He's the best!"
+  - weaver says: "Hey, hand up the phone so we can talk!"
+  - chiclet says thinky: "Oh oops! Here you go Pally!"
+  - show chiclet: AT LEFT WITH MOVE CONTINUE
+  - show pallas: AT CENTER WITH MOVE
+  - weaver says angry: "So you can help me?"
+  - pallas says talky: "(italic)Bien sur!(end) I'm a double-major in criminal psychology and law and-"
+  - weaver says thinky: "But I didn't do anything!"
+  - pallas says normal: "I'll be the judge of that!"
+  - scene: s0_interrogationstart
+  - scene: s1_3_interrogation
+  - scene: s0_interrogationend
+
+s1_3_interrogation:
+  - text: TODO
+  - scene: s0_end

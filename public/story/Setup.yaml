@@ -1,7 +1,10 @@
 backgrounds:
+  car: assets/backgrounds/car.jpg
+  holding: assets/backgrounds/holding.jpg
   room: assets/backgrounds/room_day.jpg
   room_night: assets/backgrounds/room_night.jpg
   room_night_light: assets/backgrounds/room_night_light.jpg
+  station: assets/backgrounds/station.jpg
 
 characters:
   chiclet:
@@ -16,7 +19,7 @@ characters:
       thinky: assets/characters/chiclet/think.png
   pallas:
     displayName: Pallas
-    # Pallas Avrenim
+    # Pallas Grey
     speechColor: "MintCream"
     looks:
       normal: assets/characters/pallas/idle.png
@@ -33,6 +36,15 @@ characters:
       angry: assets/characters/beep/drag.png
       talky: assets/characters/beep/talk.png
       thinky: assets/characters/beep/think.png
+  weaver:
+    displayName: Weaver
+    speechColor: "LemonChiffon"
+    looks:
+      normal: assets/characters/weaver/idle.png
+      happy: assets/characters/weaver/jump.png
+      angry: assets/characters/weaver/hurt.png
+      talky: assets/characters/weaver/badge1.png
+      thinky: assets/characters/weaver/duck.png
 cgs:
   phone1: assets/objects/phone1.png
   phone2: assets/objects/phone2.png

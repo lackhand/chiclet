@@ -31,10 +31,15 @@ const config = {
   guiConfig: "story/GUI.yaml",
   storyConfig: "story/Config.yaml",
   storySetup: "story/Setup.yaml",
-  storyText: ["story/s0.yaml", "story/s1_1_Bedroom.yaml"],
+  storyText: [
+    "story/s0.yaml",
+    "story/s1_1_bedroom.yaml",
+    "story/s1_2_car.yaml",
+    "story/s1_3_precinct.yaml",
+  ],
 
   loadingScreen: {
-    background: "assets/leaderloaderbackground.png",
+    background: "assets/loaderloaderbackground.png",
     loadingBar: {
       asset: "assets/loaderloading-bar.png",
       position: { x: 0.0, y: 0.0 },

@@ -1,0 +1,57 @@
+s1_2_start:
+  - show car: WITH FADE CONTINUE
+  - text: "We're in a car now. Vroom vroom!"
+  - show pallas: happy AT RIGHT WITH FADE CONTINUE
+  - show chiclet: happy AT LEFT WITH FADE
+  - if ({sleepy} > 2):
+      - pallas says thinky: "mlep mlep mlep naptime"
+      - chiclet says normal: "Lookout! Bump!"
+      - wait: 200
+      - chiclet says happy: "Lookout! Yellow light!"
+      - wait: 300
+      - chiclet says angry: "Lookout! Pedestrian!"
+      - wait: 400
+      - chiclet says happy: "Honk! Honk! Honk"
+      - pallas says thinky: "I guess I'm not going to get a nap..."
+  - if ({stinky} > 2):
+      - chiclet says: "Gee, Pally.(pause: 500).(pause: 250).(pause: 125). Rough night?"
+      - pallas says thinky: "Yes, actually. My criminal psyche final is (italic)muerte(end)"
+      - wait: 500
+      - pallas says thinky: "[This guy lives on cup noodles... and he's giving me a look of pity...]"
+  - scene: s1_2_exposition
+
+s1_2_exposition:
+  - chiclet says normal: "So you remember Beep's (bold)Murder(end)?"
+  - pallas says thinky: "How could I forget?
+  I had to reschedule three labs last month, and we-"
+  - chiclet says: "- couldn't find a lead.
+  Well: we got a lead.
+  Listen!"
+  - text: "*Detective Brogan Chiclet presses a button on the dash*"
+  - show weaver: talky AT TOPLEFT WITH CUT
+  - weaver says: "O-kay listeners! Today we're camping out in an office building..."
+  - show weaver: AT TOPRIGHT WITH MOVE CONTINUE
+  - pallas says angry: "What is this, (italic)ami(end)?"
+  - chiclet says: "It's a podcaster named Al Weaver."
+  - chiclet says happy: "He's pretty good! He records camping trips to secret places. It's cozy!"
+  - show chiclet: normal WITH CUT
+  - show beep: normal AT TOPRIGHT WITH FADE
+  - show beep: AT TOPLEFT WITH MOVE CONTINUE
+  - weaver says: "...Buy buy sell sell! O-kay, I think the guard thinks I belong here..."
+  - hide beep: WITH FADE CONTINUE
+  - show weaver: TOPLEFT WITH MOVE CONTINUE
+  - weaver says: "...under a desk is the perfect place to hunker down... 
+  Make sure to leave the place cleaner than you found it!..."
+  - show weaver: AT TOPRIGHT WITH MOVE CONTINUE
+  - hide weaver:
+  - pallas says happy: "Oh. uh, Okay! So (italic)mon capitaine(end), why are we listening to this?"
+  - chiclet says angry: "Inspector Head arrested Weaver on suspicion of the murder."
+  - chiclet says normal: "That 'office building' was the Delicti Building.
+  And that guard we heard on the tape?
+  (pause: 500)
+  That's (bold)Beep(end).
+  He posted the episode last night."
+  - hide ALL: WITH CUT
+  - scene: s1_3_start
+
+
