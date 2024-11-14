@@ -14,6 +14,8 @@
     "vite": "^5.4.10"
   },
   "dependencies": {
+    "@bgotink/kdl": "^0.1.6",
+    "kdljs": "^0.2.0",
     "phaser-ce": "^2.20.1",
     "renjs": "^2.9.4",
     "vite-tsconfig-paths": "^5.0.1"
