@@ -1,33 +1,26 @@
 import Action from "@/src/engine/action";
 import Executor from "@/src/engine/executor";
 import { Get, Parser } from "@/src/engine/parser";
-import { Key } from "@/src/util/jpath";
+import Each from "./each";
 
 /// Given one or more subordinate clauses, checks each in turn until it finds the winner, then jumps into it.
-export default class When extends Action {
-  clauses: Clause[];
+export default class When extends Each<Clause> {
   constructor(clauses: Clause[]) {
-    super();
-    this.clauses = clauses;
+    super(clauses);
   }
   static parse(parser: Parser) {
-    return new When(parser.parseChildren(Clause.parse) as Clause[]);
-  }
-  get(key: Key) {
-    return this.clauses[key as number];
+    return new When(parser.parseChildren(Clause.parse));
   }
   async run(executor: Executor) {
     executor.pushRelative([0]);
   }
 }
 
-export class Clause extends Action {
+export class Clause extends Each {
   guard: Get<boolean>;
-  body: Action[];
   constructor(guard: Get<boolean>, body: Action[]) {
-    super();
+    super(body);
     this.guard = guard;
-    this.body = body;
   }
   static DEFAULTY = ["default", "else", "true", true];
   static parse(parser: Parser): Clause {
@@ -38,11 +31,14 @@ export class Clause extends Action {
   }
   async run(exec: Executor) {
     if (this?.guard(exec)) {
-      // Remove us from the stack. Capture the name, since that's going to be where we go.
+      // Pop the current frame, skipping next clause (for safety, `when` has to insert a Pass as the last clause).
+      exec.pop();
+      // Capture our own name, since we'll resume from here (as any scene push).
       // This prevents visiting any more clauses.
-      const next = [...exec.pop()!];
-      // Target our own first child.
-      next.push(0);
+      const next = [...exec.peek!, 0];
+      // And we know that when always includes a final `pass` clause so it's both safe & necessary to actually pop
+      // the stack (the now-skipped `next` clause, or perhaps a pass).
+
       // Goto the matching result.
       exec.pushAbsolute(next);
     }

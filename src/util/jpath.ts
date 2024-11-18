@@ -107,7 +107,11 @@ export function isEmpty(obj: any) {
   }
   return true;
 }
-
+export function* range(max: number, min = 0, stride = 1) {
+  for (let i = min; i < max; i += stride) {
+    yield i;
+  }
+}
 export function last<T>(arr: undefined | Readonly<T[]>) {
   return arr && arr[arr.length - 1];
 }

@@ -1,60 +1,30 @@
-import "renjs";
-import "phaser-ce";
+import Executor from "@/src/engine/executor";
+import { Parser } from "@/src/engine/parser";
+import Rand from "@/src/vn/rand";
+import * as Handlers from "@/src/vn/handlers";
+import Tell from "@/src/vn/tell";
+import Pubsub from "@/src/util/pubsub";
+import Chapter from "./vn/chapter";
 
-const RenJS = (window as any).RenJS;
-// export RenJS;
-// export Plugin;
+console.log("0");
+const handlers = Object.fromEntries(
+  Object.entries(Handlers).map(([k, v]) => [k, v.parse])
+);
+console.log("1");
 
-console.log("What now?!", RenJS);
+// Give ourselves some aliases.
+handlers.opt = handlers.ask;
+console.log("2");
 
-const config = {
-  name: "Quickstart",
-  w: 800,
-  h: 600,
-  renderer: Phaser.AUTO,
-  scaleMode: Phaser.ScaleManager.SHOW_ALL,
-  splash: {
-    loadingScreen: "assets/gui/loaderloaderbackground.png",
-    loadingBar: {
-      asset: "assets/gui/loaderloading-bar.png",
-      position: {
-        x: 109,
-        y: 458,
-      },
-      size: {
-        w: 578,
-        h: 82,
-      },
-    },
-  },
-  fonts: "assets/gui/fonts.css",
-  guiConfig: "story/GUI.yaml",
-  storyConfig: "story/Config.yaml",
-  storySetup: "story/Setup.yaml",
-  storyText: [
-    "story/s0.yaml",
-    "story/s1_1_bedroom.yaml",
-    "story/s1_2_car.yaml",
-    "story/s1_3_precinct.yaml",
+// Parse the thing with unrecognized leaf as Tell, and with top level values as Scenes.
+export const executor = new Executor({
+  plugins: [
+    Pubsub,
+    new Chapter({
+      parser: new Parser(handlers, Tell.parse),
+    }),
+    Rand,
   ],
-
-  loadingScreen: {
-    background: "assets/loaderloaderbackground.png",
-    loadingBar: {
-      asset: "assets/loaderloading-bar.png",
-      position: { x: 0.0, y: 0.0 },
-      direction: 1.0,
-      size: { w: 100.0, h: 16.0 },
-    },
-    fade: true,
-  },
-  parent: "app",
-  userScale: function userScale(scale: unknown, parent: unknown) {
-    throw { msg: "Not sure how to handle!", scale, parent };
-  },
-  storyAccessibility: "story/a11y.yaml",
-};
-
-const RenJSGame = new RenJS.game(config);
-export default RenJSGame;
-RenJSGame.launch();
+  start: "start",
+});
+console.log("3");

@@ -1,30 +1,29 @@
 import { Get, Parser } from "@/src/engine/parser";
-import Executor from "../engine/executor";
-import Action from "../engine/action";
-import { Key, parse } from "../util/jpath";
+import Executor from "@/src/engine/executor";
+import Action from "@/src/engine/action";
+import { parse } from "../util/jpath";
+import Pubsub from "../util/pubsub";
+import Each from "../engine/actions/each";
+import Pass from "../engine/actions/pass";
 
 /**
  * Shows the user an option select screen.
  */
-export default class Ask extends Action {
-  options: Option[];
+export default class Ask extends Each<Option> {
   constructor(options: Option[]) {
-    super();
-    this.options = options;
-  }
-  get(key: Key): undefined | Action {
-    return this.options[key as number];
+    super(options);
   }
   async run(manager: Executor) {
     manager.vars.ask = {
       ask: this,
-      options: this.options
+      options: this.actions
         .map((o) => Option.toRenderer(manager, o))
         .filter(Boolean),
     };
     while (true) {
-      manager.pubsub.publish(`ask`, manager.vars.ask);
-      let [response, _topic] = await manager.pubsub.getOne(`answer`);
+      const answer = manager.plugin(Pubsub).getOne(`answer`);
+      manager.plugin(Pubsub).publish(`ask`, manager.vars.ask);
+      let [response, _topic] = await answer;
       if (Number.isFinite(response)) {
         manager.pushRelative([response]);
         break;
@@ -39,7 +38,7 @@ export default class Ask extends Action {
     }
   }
   static parse(parser: Parser): Ask {
-    return new Ask(parser.parseChildren(Option.parse) as Option[]);
+    return new Ask(parser.parseChildren(Option.parse));
   }
 }
 
@@ -63,7 +62,10 @@ class Option extends Action {
     this.target = target;
     this.if = _if;
   }
-  static toRenderer(manager: Executor, option: Option): null | object {
+  static toRenderer(manager: Executor, option: Option | Pass): null | object {
+    if (option instanceof Pass) {
+      return null;
+    }
     if (option.if && !option.if(manager)) {
       return null;
     }
@@ -79,7 +81,7 @@ class Option extends Action {
   async run(manager: Executor) {
     const target = this.target?.(manager);
     if (target) {
-      manager.throw("jump");
+      while (manager.pop());
       manager.pushAbsolute(parse(target));
       return;
     }

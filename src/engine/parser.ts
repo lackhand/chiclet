@@ -6,12 +6,12 @@ import {
 } from "kdljs";
 import Stack from "@/src/util/stack";
 import Executor from "./executor";
-import Action from "./action";
+import Action from "@/src/engine/action";
 
 export type Value = NonNullable<KdlValue>;
 interface Node extends KdlNode {}
 
-type Handler<T> = (parser: Parser<T>) => T;
+type Handler<Tsup, Tsub extends Tsup = Tsup> = (parser: Parser<Tsup>) => Tsub;
 type Handlers<T> = Record<string, Handler<T>>;
 
 export type Get<T = any> = (exec: Executor) => T;
@@ -19,7 +19,7 @@ export type Get<T = any> = (exec: Executor) => T;
 export class Parser<T = Action> {
   private readonly parsers: Handlers<T>;
   private readonly override = new Stack<Handler<T> | null>();
-  private readonly default = new Stack<Handler<T>>();
+  private readonly default: Handler<T>;
 
   // offsets into the document/childset for each node.
   private readonly is = new Stack<number>();
@@ -28,9 +28,6 @@ export class Parser<T = Action> {
 
   get index() {
     return this.is.peek!;
-  }
-  get node() {
-    return this.nodes.peek!;
   }
   get name() {
     return this.nodes.peek!.name;
@@ -50,18 +47,9 @@ export class Parser<T = Action> {
       .join(".");
   }
 
-  constructor(
-    parsers: Handlers<T>,
-    _default?: Handler<T>,
-    override?: Handler<T>
-  ) {
+  constructor(parsers: Handlers<T>, _default?: Handler<T>) {
     this.parsers = parsers;
-    if (_default) {
-      this.default.push(_default);
-    }
-    if (override) {
-      this.override.push(override);
-    }
+    this.default = _default ?? ((p) => p.throw("unhandled"));
   }
 
   compile(text: undefined | null): undefined;
@@ -116,7 +104,10 @@ export class Parser<T = Action> {
     }
   }
 
-  parseDocument(document: KdlDocument): Record<string, T> {
+  parseDocument<V extends T = T>(
+    document: KdlDocument,
+    override?: Handler<T, V>
+  ): V[] {
     this.nodes.push({
       name: "!!ROOT!!",
       values: [],
@@ -124,15 +115,10 @@ export class Parser<T = Action> {
       children: document,
       tags: { name: "", values: [], properties: {} },
     });
-    const children = this.parseChildren();
-    const ret: any = {};
-    for (let i = 0; i < document.length; ++i) {
-      ret[document[i].name] = children[i];
-    }
-    return ret;
+    return this.parseChildren(override) as V[];
   }
 
-  parseText(text: string): Record<string, T> {
+  parseText<V extends T = T>(text: string, override?: Handler<T, V>): V[] {
     const parsed = kdlParse(text);
     if (parsed.errors?.length) {
       this.throw(parsed.errors);
@@ -140,12 +126,16 @@ export class Parser<T = Action> {
     if (!parsed.output) {
       this.throw("empty somehow?");
     }
-    return this.parseDocument(parsed.output);
+    return this.parseDocument(parsed.output, override) as V[];
   }
 
-  parseChildren(override?: null | Handler<T>): T[] {
-    return this.override.with(override, () =>
-      this.children.map((n, i) => this.withNode(n, i, () => this.parseNode(n)))
+  parseChildren<V extends T = T>(
+    override?: null | undefined | Handler<T, V>
+  ): V[] {
+    return this.override.with(override as any as Handler<T, V>, () =>
+      this.children.map((n, i) =>
+        this.withNode(n, i, () => this.parseNode(n) as V)
+      )
     );
   }
 
@@ -155,15 +145,12 @@ export class Parser<T = Action> {
 
   private parseNode(node: Node): T {
     const handler =
-      this.override.peek ??
-      this.parsers[node.name] ??
-      this.default.peek ??
-      this.throw(`Missing handler for ${node.name}`);
+      this.override.peek ?? this.parsers[node.name] ?? this.default;
     return handler(this);
   }
 
   throw(reason?: any): never {
-    console.error("Parser error at", this.here, reason);
+    console.error("Parser error at", this.here, reason, this);
     throw new Error();
   }
 }

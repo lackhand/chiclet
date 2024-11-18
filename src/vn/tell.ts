@@ -1,7 +1,8 @@
 import { Get, Parser } from "@/src/engine/parser";
-import Executor from "../engine/executor";
-import Action from "../engine/action";
-import { Key, parse, put } from "../util/jpath";
+import Executor from "@/src/engine/executor";
+import { parse, put } from "@/src/util/jpath";
+import Each from "@/src/engine/actions/each";
+import Pubsub from "../util/pubsub";
 
 const SKIP = ["skip", "omit"];
 
@@ -13,12 +14,11 @@ const SKIP = ["skip", "omit"];
  * After a tell, the system _will_ block until it receives a `told`!
  * Animation may continue after a told if desired. Up to you, really.
  */
-export default class Tell extends Action {
+export default class Tell extends Each<Tell> {
   name: Get<string>;
   props: [k: Get<string>, v: Get<any>][];
   values: Get<string>[];
   text: undefined | Get<string>;
-  children: Tell[];
   constructor(
     name: Get<string>,
     props: [k: Get<string>, v: Get<any>][],
@@ -26,12 +26,11 @@ export default class Tell extends Action {
     text: undefined | Get<string>,
     children: Tell[]
   ) {
-    super();
+    super(children);
     this.name = name;
     this.props = props;
     this.values = values;
     this.text = text;
-    this.children = children;
   }
   static parse(parser: Parser, overrideName?: Get<string>): Tell {
     const values = [...parser.values];
@@ -47,9 +46,6 @@ export default class Tell extends Action {
       parser.compileText(text),
       parser.parseChildren((parser) => Tell.parse(parser, name)) as Tell[]
     );
-  }
-  get(key: Key): undefined | Action {
-    return this.children[key as number];
   }
   async run(executor: Executor) {
     let values: string[] = [];
@@ -76,10 +72,10 @@ export default class Tell extends Action {
       put(executor.vars, ["actor", name, ...parse(k)], v);
       props.push(v);
     }
-    executor.pubsub.publish(`tell.${name}`, { name, text, values, props });
-    await executor.pubsub.getOne(`told.${name}`);
-    if (this.children?.length) {
-      executor.pushRelative([0]);
-    }
+    await executor
+      .plugin(Pubsub)
+      .ask(`tell.${name}`, { name, text, values, props }, `told.${name}`);
+    // If any...
+    await super.run(executor);
   }
 }

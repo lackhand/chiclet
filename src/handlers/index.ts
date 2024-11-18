@@ -1,9 +1,0 @@
-export { default as ask } from "./ask";
-export { default as jump } from "./jump";
-export { default as goto0 } from "./goto0";
-export { default as load } from "./load";
-export { default as save } from "./save";
-export { default as scene } from "./scene";
-export { default as tell } from "./tell";
-export { default as when } from "./when";
-export { default as while } from "./while";

@@ -1,11 +1,11 @@
-import Executor from "../engine/executor";
-import { Parser } from "../engine/parser";
-import { last } from "../util/jpath";
+import Executor from "@/src/engine/executor";
+import { Parser } from "@/src/engine/parser";
+import { last } from "@/src/util/jpath";
 import BaseStorage from "./baseStorage";
 
-export default class Load extends BaseStorage {
-  static parse(parser: Parser): Load {
-    return new Load(parser.compileText(last(parser.values) ?? undefined));
+export default class Import extends BaseStorage {
+  static parse(parser: Parser): Import {
+    return new Import(parser.compileText(last(parser.values) ?? undefined));
   }
 
   async run(manager: Executor) {
@@ -25,7 +25,7 @@ export default class Load extends BaseStorage {
     });
 
     manager.pubsub.publish(`engine.resetting`, vars);
-    manager.reset(vars);
+    manager.import(vars);
     manager.pubsub.publish(`load.slot.${slot}`, true);
   }
 }

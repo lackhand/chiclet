@@ -84,3 +84,68 @@ export async function* asyncIterateAll<T>(
     unsubscribe();
   }
 }
+
+export class CountDownLatch extends Promise<void> {
+  private _count = 0;
+  private _resolve!: Resolver<void>;
+  private _reject!: Rejector;
+  constructor() {
+    super((resolve, reject) => {
+      this._resolve = resolve;
+      this._reject = reject;
+    });
+  }
+
+  request() {
+    this._count++;
+    return () => {
+      this._count--;
+      if (this._count <= 0) {
+        this._resolve();
+      }
+    };
+  }
+
+  abort(reason: any) {
+    this._reject(reason);
+  }
+}
+
+// Each time it's awaited, it sleeps until all extant promises are resolved.
+type PromiseThen<T = void> = Promise<T>["then"];
+type PromiseCatch<T = void> = Promise<T>["catch"];
+type PromiseFinally<T = void> = Promise<T>["finally"];
+export class Batcher {
+  private _outstanding = new Set<Promise<void>>();
+
+  async then(
+    resolve: Parameters<PromiseThen>[0],
+    _reject: Parameters<PromiseThen>[1]
+  ): ReturnType<PromiseThen> {
+    while (this._outstanding.size > 0) {
+      for (let first of this._outstanding) {
+        await first;
+        this._outstanding.delete(first);
+        break;
+      }
+    }
+    resolve?.();
+    return void 0;
+  }
+  catch(reject: Parameters<PromiseCatch>[0]): ReturnType<PromiseCatch> {
+    return this.then(null, reject);
+  }
+  finally(handle: Parameters<PromiseFinally>[0]): ReturnType<PromiseFinally> {
+    return this.then(handle, handle) as Promise<void>;
+  }
+  push(onResolve: Resolver<void>): Resolver<void> {
+    const parts = promiseParts();
+    this._outstanding.add(parts.promise);
+    const oldResolve = parts.resolve;
+    return () => {
+      oldResolve();
+      this._outstanding.delete(parts.promise);
+      onResolve();
+    };
+  }
+}

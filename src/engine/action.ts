@@ -1,48 +1,23 @@
-import { Key, Path } from "../util/jpath";
-import Executor from "./executor";
-import { Parser } from "./parser";
+import { Key } from "@/src/util/jpath";
+import Executor from "@/src/engine/executor";
+import { Parser } from "@/src/engine/parser";
 
-export interface Lookup<T extends Lookup<T>> {
-  get(key: Key): undefined | T;
+export interface Lookup<T = Action> {
+  get(key: Key): Promise<T>;
 }
 
-export default abstract class Action implements Lookup<Action> {
+export default abstract class Action<T = Action<any>> implements Lookup<T> {
   // As with maps...
-  get(_key: Key): undefined | Action {
-    return undefined;
+  async get(_key: Key): Promise<T> {
+    throw new RangeError("no keys");
   }
 
   async run(_executor: Executor) {
     return;
   }
 
-  beforePush(_executor: Executor): void {
-    return undefined;
-  }
-  afterPush(_executor: Executor): void {
-    return undefined;
-  }
-  afterPop(_executor: Executor): void {
-    return undefined;
-  }
-  catch(_executor: Executor): boolean {
-    return false;
-  }
-
   static parse(_parser: Parser): Action {
     console.error("Parse called on unoverridden action!");
     throw new Error();
-  }
-
-  static getPath(lookup: Lookup<Action>, path: Path): undefined | Action {
-    let ptr = lookup;
-    for (let key of path) {
-      let next = ptr.get(key);
-      if (next == undefined) {
-        return undefined;
-      }
-      ptr = next;
-    }
-    return ptr as Action;
   }
 }

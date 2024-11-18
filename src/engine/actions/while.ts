@@ -1,8 +1,9 @@
 import Action from "@/src/engine/action";
 import Executor from "@/src/engine/executor";
 import { Get, Parser } from "@/src/engine/parser";
-import { Key, last } from "@/src/util/jpath";
+import { last } from "@/src/util/jpath";
 import Goto0 from "./goto0";
+import Pass from "./pass";
 
 const DO_NAMES = ["do"];
 
@@ -16,7 +17,7 @@ export default class While extends Action {
   constructor(_do: boolean, guard: Get<boolean>, actions: Action[]) {
     super();
     this.do = _do;
-    this.actions = [...actions, new Goto0(guard)];
+    this.actions = [...actions, new Goto0(guard), new Pass()];
   }
   static parse(parser: Parser) {
     return new While(
@@ -33,10 +34,7 @@ export default class While extends Action {
       parser.parseChildren(null)
     );
   }
-  get(key: Key) {
-    return this.actions[key as number];
-  }
   async run(executor: Executor) {
-    executor.pushRelative([this.do ? 0 : this.actions.length - 1]);
+    executor.pushRelative([this.do ? 0 : this.actions.length - 2]);
   }
 }

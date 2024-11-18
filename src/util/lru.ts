@@ -8,6 +8,10 @@ export default class LRU<K, V> {
     this._max = max;
   }
 
+  clear() {
+    this._map.clear();
+  }
+
   lookup(key: K, source: undefined | ((k: K) => undefined | V)) {
     let result = this.get(key);
     if (result === undefined) {

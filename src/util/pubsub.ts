@@ -1,3 +1,4 @@
+import { Pubsub as PubsubPlugin } from "../engine/plugin";
 import { asyncIterateAll } from "./promises";
 
 export type Topic = string;
@@ -8,14 +9,14 @@ export type SubscriberT = (
   myOwnName: SubscriberK
 ) => void;
 
-export default class Pubsub {
+export default class Pubsub extends PubsubPlugin {
   topics = new Map<Topic, Map<SubscriberK, SubscriberT>>();
 
   protected sendExact(topic: Topic, event: any, asTopic?: Topic): number {
     let succeeded = 0;
     for (let [name, sub] of this.topics.get(topic) ?? []) {
       try {
-        sub(event, asTopic ?? topic, name);
+        window.queueMicrotask(() => sub(event, asTopic ?? topic, name));
         succeeded++;
       } catch (e: any) {
         console.error("sub", sub, "on event", event, "errored", e);
@@ -64,6 +65,15 @@ export default class Pubsub {
       );
     });
   }
+  async ask(
+    fullTopic: Topic,
+    event: any,
+    response: Topic
+  ): Promise<[event: any, topic: Topic]> {
+    const result = this.getOne(response);
+    this.publish(fullTopic, event);
+    return result;
+  }
   getAll(
     topic: Topic
   ): AsyncGenerator<[event: any, topic: Topic], void, unknown> {
@@ -75,4 +85,7 @@ export default class Pubsub {
       return () => this.unsubscribe(topic, symbol);
     });
   }
+
+  import(_: any) {}
+  export(_: any) {}
 }
