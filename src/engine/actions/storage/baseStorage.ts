@@ -1,9 +1,9 @@
 import Action from "@/src/engine/action";
-import { Get } from "@/src/engine/parser";
+import { Value } from "@/src/engine/parser";
 
 export default abstract class BaseStorage extends Action {
-  slot: undefined | Get<string>;
-  constructor(slot: undefined | Get<string>) {
+  slot: undefined | Value;
+  constructor(slot: undefined | Value) {
     super();
     this.slot = slot;
   }

@@ -1,15 +1,14 @@
 import Executor from "@/src/engine/executor";
-import { Parser } from "@/src/engine/parser";
-import { last } from "@/src/util/jpath";
+import Parser from "@/src/engine/parser";
+import { arr, last } from "@/src/util/objectPath";
 import BaseStorage from "./baseStorage";
-import Pubsub from "@/src/util/pubsub";
 
 export default class Export extends BaseStorage {
   async run(executor: Executor) {
-    const slot = this.slot?.(executor) ?? "auto";
+    const slot = executor.eval.string(this.slot, "auto");
     await executor.export(async (vars) => {
       const store = await this.getStore().catch((e) => {
-        executor.plugin(Pubsub).publish("errors.save.db", e);
+        executor.pubsub.publish(ERRORS_DB, e);
         return Promise.reject(e);
       });
 
@@ -18,13 +17,17 @@ export default class Export extends BaseStorage {
         request.onsuccess = resolve;
         request.onerror = reject;
       }).catch((e) => {
-        executor.plugin(Pubsub).publish(`errors.save.slot.${slot}`, e);
+        executor.pubsub.publish([...ERRORS_SLOT, slot], e);
         return Promise.reject(e);
       });
-      executor.plugin(Pubsub).publish(`save.slot.${slot}`, true);
+      executor.pubsub.publish([...SAVE_SLOT, slot], true);
     });
   }
   static parse(parser: Parser): Export {
-    return new Export(parser.compileText(last(parser.values) ?? undefined));
+    return new Export(last(parser.values) ?? undefined);
   }
 }
+
+const ERRORS_DB = arr`errors save db`;
+const ERRORS_SLOT = arr`errors save slot`;
+const SAVE_SLOT = arr`save slot`;

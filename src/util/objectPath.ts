@@ -15,6 +15,74 @@ export function parse(str: PathString): Path {
     })
     .filter((v) => v != "");
 }
+
+export function arr(
+  strings: Readonly<TemplateStringsArray>,
+  ...interpolations: Readonly<Key | Key[]>[]
+): Key[] {
+  return [...iter(strings, ...interpolations)];
+}
+
+export function* iter(
+  strings: Readonly<TemplateStringsArray>,
+  ...interpolations: Readonly<Key | Key[]>[]
+): Iterable<Key> {
+  let accum = [""] as [string];
+  for (let i = 0; i < interpolations.length; ++i) {
+    yield* arrString(accum, strings[i]);
+    yield* arrInterpolation(accum, interpolations[i]);
+  }
+  yield* arrString(accum, strings[strings.length - 1]);
+  if (accum[0] != "") yield accum[0];
+}
+function* arrString(accum: [string], value: string): Iterable<Key> {
+  let lastIndex = 0;
+  let index = -1;
+  while (0 <= (index = value.indexOf(" ", index))) {
+    let yielded = `${accum[0]}${value.slice(lastIndex, index)}`;
+    accum[0] = "";
+    if (yielded != "") {
+      yield yielded;
+    }
+    index++; // Skip over the " ".
+    lastIndex = index;
+  }
+  accum[0] = value.slice(lastIndex);
+}
+function* arrInterpolation(
+  accum: [string],
+  value: Readonly<Key | Key[]>
+): Iterable<Key> {
+  if (Array.isArray(value)) {
+    // If we receive an array, assume any remaining fragment needs emission, as do each of the terms of the array.
+    if (accum[0] != "") {
+      yield accum[0];
+      accum[0] = "";
+    }
+    for (let v of value as Key[]) {
+      yield* arrInterpolation(accum, v);
+      if (accum[0] != "") {
+        yield accum[0];
+        accum[0] = "";
+      }
+    }
+    return;
+  }
+  // Unlike array above, interpolating a string might jam it next to the accumulator.
+  if ("string" == typeof value) {
+    yield* arrString(accum, value);
+    return;
+  }
+  // But numbers, symbols, whatever -- _those_ have to clear any remaining string.
+  // This isn't definite; maybe arr`foo${12}` should allow itself to produce ["foo12"].
+  // But you can get it today with arr`foo${""+12}` so... meh?
+  if (accum[0] != "") {
+    yield accum[0];
+    accum[0] = "";
+  }
+  yield value as Key;
+}
+
 export function wrap<T>(value: T, path: Path): Node<T> {
   let ptr: Node<T> = value;
   for (let i = path.length - 1; i >= 0; --i) {

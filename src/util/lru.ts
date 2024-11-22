@@ -23,13 +23,19 @@ export default class LRU<K, V> {
     return result;
   }
 
-  get(key: K): V | undefined {
-    const item = this.pop(key);
+  get(key: K, init: () => V): V;
+  get(key: K): V | undefined;
+  get(key: K, init?: () => V): V | undefined {
+    let item = this.pop(key);
+    if (item === undefined && init) {
+      item = init();
+    }
     if (item !== undefined) {
       this._map.set(key, item);
     }
     return item;
   }
+
   pop(key?: K): V | undefined {
     key ??= this.firstKey;
     if (key === undefined) {

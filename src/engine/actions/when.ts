@@ -1,6 +1,6 @@
 import Action from "@/src/engine/action";
 import Executor from "@/src/engine/executor";
-import { Get, Parser } from "@/src/engine/parser";
+import Parser, { Value } from "@/src/engine/parser";
 import Each from "./each";
 
 /// Given one or more subordinate clauses, checks each in turn until it finds the winner, then jumps into it.
@@ -16,21 +16,21 @@ export default class When extends Each<Clause> {
   }
 }
 
+const DEFAULTY = ["default", "else", "true", true];
 export class Clause extends Each {
-  guard: Get<boolean>;
-  constructor(guard: Get<boolean>, body: Action[]) {
+  guard: Value;
+  constructor(guard: Value, body: Action[]) {
     super(body);
     this.guard = guard;
   }
-  static DEFAULTY = ["default", "else", "true", true];
   static parse(parser: Parser): Clause {
-    const guard = this.DEFAULTY.includes(parser.name)
-      ? (_: any) => true
-      : parser.compileGuard(parser.properties.if ?? parser.name)!;
+    const guard = DEFAULTY.includes(parser.name)
+      ? true
+      : parser.properties.if ?? parser.values[0] ?? parser.name;
     return new Clause(guard, parser.parseChildren(null));
   }
   async run(exec: Executor) {
-    if (this?.guard(exec)) {
+    if (exec.eval.boolean(this.guard)) {
       // Pop the current frame, skipping next clause (for safety, `when` has to insert a Pass as the last clause).
       exec.pop();
       // Capture our own name, since we'll resume from here (as any scene push).

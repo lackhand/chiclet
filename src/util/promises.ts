@@ -62,23 +62,24 @@ type Unsubscribe = () => void;
 type Handle<T> = (t: T) => void;
 type Subscribe<T> = (handle: Handle<T>) => Unsubscribe;
 
+type NextPromise<T> = [t: T, p: Promise<NextPromise<T>>];
+
 export async function* asyncIterateAll<T>(
   subscribe: Subscribe<T>
-): AsyncGenerator<Awaited<NonNullable<T>>, void, unknown> {
-  let queue: T[] = [];
-  let { promise, resolve } = promiseParts();
+): AsyncGenerator<T, void, unknown> {
+  let { promise, resolve } = promiseParts<NextPromise<T>>();
+  let produceResolve = [resolve];
   const unsubscribe = subscribe((t: T) => {
-    queue.push(t);
-    resolve();
+    const { promise, resolve } = promiseParts<NextPromise<T>>();
+    const oldResolve = produceResolve[0];
+    produceResolve[0] = resolve;
+    oldResolve([t, promise]);
   });
+  let value;
   try {
     while (true) {
-      await promise;
-      ({ promise, resolve } = promiseParts());
-      let result;
-      while ((result = queue.shift())) {
-        yield result;
-      }
+      [value, promise] = await promise;
+      yield value;
     }
   } finally {
     unsubscribe();

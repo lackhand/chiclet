@@ -1,91 +1,76 @@
-import { Pubsub as PubsubPlugin } from "../engine/plugin";
-import { asyncIterateAll } from "./promises";
+import { Pubsub as PubsubPlugin } from "@/src/engine/plugin";
+import { Key, Path } from "./objectPath";
 
-export type Topic = string;
-export type SubscriberK = string | symbol;
-export type SubscriberT = (
-  event: any,
-  topic: string,
-  myOwnName: SubscriberK
-) => void;
+export type SubscriberT = (topic: Path, event: any) => void;
 
 export default class Pubsub extends PubsubPlugin {
-  topics = new Map<Topic, Map<SubscriberK, SubscriberT>>();
+  root = new Topic();
 
-  protected sendExact(topic: Topic, event: any, asTopic?: Topic): number {
-    let succeeded = 0;
-    for (let [name, sub] of this.topics.get(topic) ?? []) {
-      try {
-        window.queueMicrotask(() => sub(event, asTopic ?? topic, name));
-        succeeded++;
-      } catch (e: any) {
-        console.error("sub", sub, "on event", event, "errored", e);
+  publish(path: Path, payload?: any) {
+    try {
+      const targets: Topic[] = [];
+      let ptr: Topic = this.root;
+      targets.push(ptr);
+      for (let i = 0; i < path.length; ++i) {
+        let next = ptr.topics.get(path[i]);
+        if (!next) break;
+        targets.push(next);
+        ptr = next;
       }
-    }
-    return succeeded;
-  }
-  publish(fullTopic: string, event: any) {
-    let succeeded = 0;
-    for (
-      let i = 0;
-      i >= 0 && i < fullTopic.length;
-      i = fullTopic.indexOf(".", i + 1)
-    ) {
-      succeeded += this.sendExact(fullTopic.slice(0, i), event, fullTopic);
-    }
-    if (fullTopic.length > 0) {
-      succeeded += this.sendExact(fullTopic, event, fullTopic);
-    }
-    if (succeeded <= 0) {
-      console.info("Discarding unsubscribed", fullTopic, event);
-    }
-  }
-  subscribe(topic: Topic, name: SubscriberK, handler: SubscriberT) {
-    let subs = this.topics.get(topic);
-    if (!subs) {
-      this.topics.set(topic, (subs = new Map()));
-    }
-    subs.set(name, handler);
-  }
-  unsubscribe(topic: Topic, name: SubscriberK) {
-    let subs = this.topics.get(topic);
-    if (subs) {
-      subs.delete(name);
-    }
-  }
-  async getOne(topic: Topic): Promise<[event: any, topic: Topic]> {
-    return await new Promise((resolve, _reject) => {
-      this.subscribe(
-        topic,
-        Symbol(`subscribeOnce.${topic}`),
-        (event, topic, name) => {
-          this.unsubscribe(topic, name);
-          resolve([event, topic]);
+      for (let i = targets.length - 1; i >= 0; --i) {
+        const slice = path.slice(i);
+        for (let subscriber of targets[i].subscribers) {
+          queueMicrotask(() => {
+            try {
+              subscriber(slice, payload);
+            } catch (e) {
+              console.error(
+                "Microtask error!",
+                e,
+                "by handler",
+                subscriber,
+                "on",
+                path.slice(0, i),
+                "!",
+                slice,
+                payload
+              );
+            }
+          });
         }
-      );
-    });
+      }
+    } catch (e) {
+      console.error("publish error", e, path, payload);
+    }
   }
-  async ask(
-    fullTopic: Topic,
-    event: any,
-    response: Topic
-  ): Promise<[event: any, topic: Topic]> {
-    const result = this.getOne(response);
-    this.publish(fullTopic, event);
-    return result;
+  subscribe(path: Path, subscriber: SubscriberT) {
+    this.find(path).subscribers.add(subscriber);
+    return () => this.unsubscribe(path, subscriber);
   }
-  getAll(
-    topic: Topic
-  ): AsyncGenerator<[event: any, topic: Topic], void, unknown> {
-    return asyncIterateAll((resolveEach) => {
-      const symbol = Symbol(`subscribeAsyncIterator.${topic}`);
-      this.subscribe(topic, symbol, (event, topic) => {
-        resolveEach([event, topic]);
-      });
-      return () => this.unsubscribe(topic, symbol);
-    });
+  unsubscribe(path: Path, subscriber: SubscriberT) {
+    this.find(path).subscribers.delete(subscriber);
+  }
+  private find(path: Path): Topic {
+    return this.root.find(path, 0);
   }
 
   import(_: any) {}
   export(_: any) {}
+}
+
+class Topic {
+  readonly subscribers = new Set<SubscriberT>();
+  readonly topics = new Map<Key, Topic>();
+
+  find(path: Path, offset: number): Topic {
+    if (offset >= path.length) {
+      return this;
+    }
+    const key = path[offset];
+    let next = this.topics.get(key);
+    if (!next) {
+      this.topics.set(key, (next = new Topic()));
+    }
+    return next.find(path, offset + 1);
+  }
 }

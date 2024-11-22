@@ -1,5 +1,5 @@
 import Action from "@/src/engine/action";
-import { Parser } from "@/src/engine/parser";
+import Parser from "@/src/engine/parser";
 import Executor from "@/src/engine/executor";
 
 /// Just eats up space :)

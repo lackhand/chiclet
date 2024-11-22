@@ -1,7 +1,8 @@
 import Action from "../engine/action";
 import Each from "../engine/actions/each";
 import Executor from "../engine/executor";
-import { Parser } from "../engine/parser";
+import Parser from "../engine/parser";
+import { arr } from "../util/objectPath";
 import Pubsub from "../util/pubsub";
 
 export default class Scene extends Each {
@@ -17,10 +18,19 @@ export default class Scene extends Each {
     );
   }
   async run(executor: Executor) {
-    const [send, receive] = ["start", "ready"].map(
-      (v) => `scene.${v}.${executor.peek.join(".")}`
+    const frame = executor.peek;
+    const publish = arr`scene start ${frame}`;
+    const subscribe = arr`scene ready ${frame}`;
+    console.log(
+      `Checking pub/sub with stack ${JSON.stringify(frame)}. Sending to`,
+      publish,
+      "awaiting on",
+      subscribe
     );
-    await executor.plugin(Pubsub).ask(send, this, receive);
+    await executor.pubsub.ask(publish, this, subscribe);
     super.run(executor);
+  }
+  toJSON(): string {
+    return `{"name": "${this.name}"}`;
   }
 }

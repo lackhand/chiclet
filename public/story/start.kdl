@@ -1,0 +1,60 @@
+start {
+  jump "scene1"
+}
+scene1 "diner" "bgmusic" "phoenix" "larry" "larry.panicked" {
+  - wait=0 {
+    diner fade=0
+    larry fade=1 !="panicked"
+    phoenix @="left" dumb=0 stinky=0 ugly=0
+    bgmusic "start"
+  }
+  choice {
+    "dumb!" {
+      phoenix dumb=4;
+    }
+    "stinky" {
+      phoenix stinky=4;
+    }
+    "evil" {
+      phoenix ugly=4;
+    }
+  }
+  when {
+    "phoenix.dumb > 0" {
+      phoenix "I was dumb."
+    }
+    "phoenix.stinky > 0" {
+      phoenix "I was stinky."
+    }
+    "phoenix.evil > 0" {
+      phoenix "I was downright evil."
+    }
+  }
+  larry r#"oh god ${phoenix.stinky >= 4 ? "stinky" : ""} phoenix..."# {
+    - "... I killed him..."
+    - "it was a mistake you gotta believe me"
+    - !="thoughtful" r#"_it was not a mistake ${phoenix.dumb > 5 ? "you idiot hehehe" : ""}_"#
+    - !="angry" "but he deserved it"
+    - !="" wait=0
+  }
+  phoenix "wtf I asked what you wanted for breakfast." {
+    - "subtext: ..."
+    - wait=0 "annoyed" "wait larry"
+  }
+  choice {
+    "why do you do this you goddamn idiot." target="scene2"
+    "you goddamn idiot, ${actor.larry.name}" {
+      larry at="right" from="outright" "dat's right!"
+      jump "scene3"
+    }
+    "its fine don't worry" if=r"actor.phoenix.sucker > 2" {
+      set sucker=12
+    }
+  }
+}
+scene2 {
+  phoenix "its alive"
+}
+scene3 {
+  phoenix "I guess..."
+}

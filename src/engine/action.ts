@@ -1,6 +1,6 @@
-import { Key } from "@/src/util/jpath";
+import { Key } from "@/src/util/objectPath";
 import Executor from "@/src/engine/executor";
-import { Parser } from "@/src/engine/parser";
+import Parser from "@/src/engine/parser";
 
 export interface Lookup<T = Action> {
   get(key: Key): Promise<T>;

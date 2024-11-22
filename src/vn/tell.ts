@@ -1,10 +1,15 @@
-import { Get, Parser } from "@/src/engine/parser";
+import Parser, { Value } from "@/src/engine/parser";
 import Executor from "@/src/engine/executor";
-import { parse, put } from "@/src/util/jpath";
+import { last } from "@/src/util/objectPath";
 import Each from "@/src/engine/actions/each";
-import Pubsub from "../util/pubsub";
+import "@/src/util/pubsubHelpers";
 
 const SKIP = ["skip", "omit"];
+type PropsT = Record<string, Value>;
+interface ParseOverride {
+  name: string;
+  props: PropsT;
+}
 
 /**
  * Receives stage direction by name -- so `foo bar baz=1 { qux ... }` sends actor `foo` the rest of the message...
@@ -15,15 +20,15 @@ const SKIP = ["skip", "omit"];
  * Animation may continue after a told if desired. Up to you, really.
  */
 export default class Tell extends Each<Tell> {
-  name: Get<string>;
-  props: [k: Get<string>, v: Get<any>][];
-  values: Get<string>[];
-  text: undefined | Get<string>;
+  name: string;
+  props: PropsT;
+  values: Value[];
+  text: undefined | string;
   constructor(
-    name: Get<string>,
-    props: [k: Get<string>, v: Get<any>][],
-    values: Get<string>[],
-    text: undefined | Get<string>,
+    name: string,
+    props: PropsT,
+    values: Value[],
+    text: undefined | string,
     children: Tell[]
   ) {
     super(children);
@@ -32,26 +37,32 @@ export default class Tell extends Each<Tell> {
     this.values = values;
     this.text = text;
   }
-  static parse(parser: Parser, overrideName?: Get<string>): Tell {
-    const values = [...parser.values];
-    const text = values.pop();
-    const name = overrideName ?? parser.compileText(parser.name);
+
+  static parse(parser: Parser, override?: Partial<ParseOverride>): Tell {
+    const values = [...parser.values].filter((v) => v != null);
+    const text =
+      "string" == typeof last(values) ? (values.pop() as string) : undefined;
+    const BAD_NAMES = ["-", "", "default"];
+    const name = BAD_NAMES.includes(parser.name)
+      ? override?.name ?? "anonymous"
+      : parser.name;
+    const props = nonnull({ ...override?.props, ...parser.properties });
+
     return new Tell(
       name,
-      Object.entries(parser.properties).map(([k, v]) => [
-        parser.compileText(k),
-        parser.compile(v),
-      ]),
-      values.map((v) => parser.compileText(v)),
-      parser.compileText(text),
-      parser.parseChildren((parser) => Tell.parse(parser, name)) as Tell[]
+      props as PropsT,
+      values,
+      text,
+      parser.parseChildren((parser) =>
+        Tell.parse(parser, { name, props })
+      ) as Tell[]
     );
   }
   async run(executor: Executor) {
     let values: string[] = [];
     for (let vf of this.values) {
-      const v = vf?.(executor);
-      if (v == undefined) {
+      const v = executor.eval.string(vf);
+      if (!v) {
         continue;
       }
       if (SKIP.includes(v)) {
@@ -59,23 +70,39 @@ export default class Tell extends Each<Tell> {
       }
       values.push(v);
     }
-    const name = this.name(executor);
-    const text = this.text?.(executor);
-    put(executor.vars, ["actor", name, "text"], text);
-    const props = [];
-    for (let [kf, vf] of this.props) {
-      const k = kf?.(executor);
-      const v = vf?.(executor);
-      if (k == undefined || v == undefined) {
-        continue;
-      }
-      put(executor.vars, ["actor", name, ...parse(k)], v);
-      props.push(v);
+
+    const name = executor.eval.string(this.name);
+    let actor = executor.eval.vars[name];
+    if (!actor) {
+      actor = executor.eval.vars[name] = {};
     }
-    await executor
-      .plugin(Pubsub)
-      .ask(`tell.${name}`, { name, text, values, props }, `told.${name}`);
+
+    const props: any = {};
+    for (let [kf, vf] of Object.entries(this.props)) {
+      const k = executor.eval.string(kf);
+      // TODO: I don't love this. Force casting?
+      let v: Value = executor.eval.string(vf);
+      if (!k || !v) continue;
+      let parsed = Number.parseFloat(v);
+      v = Number.isFinite(parsed) ? parsed : v;
+      props[k] = v;
+      actor[k] = v;
+    }
+    const text = executor.eval.string(this.text);
+
+    await executor.pubsub.ask(
+      ["tell", name],
+      { name, actor, props, values, text },
+      ["told", name]
+    );
     // If any...
     await super.run(executor);
   }
+}
+
+function nonnull<K extends keyof any, V>(m: Record<K, null | V>): Record<K, V> {
+  for (let [k, v] of Object.entries(m)) {
+    if (v === null) delete (m as any)[k];
+  }
+  return m as Record<K, V>;
 }

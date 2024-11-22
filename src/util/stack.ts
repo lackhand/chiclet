@@ -1,4 +1,4 @@
-import { last, reversed } from "./jpath";
+import { last, reversed } from "./objectPath";
 
 export default class Stack<T> {
   // Scenes specified by the user.

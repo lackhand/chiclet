@@ -5,7 +5,6 @@ import {
   Document as KdlDocument,
 } from "kdljs";
 import Stack from "@/src/util/stack";
-import Executor from "./executor";
 import Action from "@/src/engine/action";
 
 export type Value = NonNullable<KdlValue>;
@@ -14,9 +13,7 @@ interface Node extends KdlNode {}
 type Handler<Tsup, Tsub extends Tsup = Tsup> = (parser: Parser<Tsup>) => Tsub;
 type Handlers<T> = Record<string, Handler<T>>;
 
-export type Get<T = any> = (exec: Executor) => T;
-
-export class Parser<T = Action> {
+export default class Parser<T = Action> {
   private readonly parsers: Handlers<T>;
   private readonly override = new Stack<Handler<T> | null>();
   private readonly default: Handler<T>;
@@ -50,58 +47,6 @@ export class Parser<T = Action> {
   constructor(parsers: Handlers<T>, _default?: Handler<T>) {
     this.parsers = parsers;
     this.default = _default ?? ((p) => p.throw("unhandled"));
-  }
-
-  compile(text: undefined | null): undefined;
-  compile(text: KdlValue): Get<KdlValue>;
-  compile(text: undefined | KdlValue): undefined | Get<KdlValue>;
-  compile(text: undefined | KdlValue): undefined | Get<KdlValue> {
-    if (text == undefined) return undefined;
-    switch (typeof text) {
-      case "string":
-        const fn = new Function(`with (this) { return ${text}}`);
-        return Object.defineProperty(
-          (exec: Executor) => fn.call(exec.vars),
-          "name",
-          { value: text }
-        );
-      default:
-        return Object.defineProperty((_: any) => text, "name", { value: text });
-    }
-  }
-
-  compileText(text: undefined | null): undefined;
-  compileText(text: KdlValue): Get<string>;
-  compileText(text: undefined | KdlValue): undefined | Get<string>;
-  compileText(text: undefined | KdlValue): undefined | Get<string> {
-    if (text == undefined) return undefined;
-    switch (typeof text) {
-      case "string":
-        return this.compile(`\`${text}\``) as (exec: Executor) => string;
-      default:
-        return (_) => `${text ?? ""}`;
-    }
-  }
-
-  compileGuard(text: undefined | null, flip?: boolean): undefined;
-  compileGuard(text: KdlValue, flip?: boolean): Get<boolean>;
-  compileGuard(
-    text: undefined | KdlValue,
-    flip?: boolean
-  ): undefined | Get<boolean>;
-  compileGuard(
-    text: undefined | KdlValue,
-    flip?: boolean
-  ): undefined | Get<boolean> {
-    if (text == undefined) return undefined;
-    switch (typeof text) {
-      case "string":
-        return this.compile(`${flip ? "" : "!"}!(${text})`) as (
-          exec: Executor
-        ) => boolean;
-      default:
-        return (_) => !!text;
-    }
   }
 
   parseDocument<V extends T = T>(

@@ -1,11 +1,13 @@
 import seedrandom from "seedrandom";
-import { Plugin, Props, Vars } from "../engine/plugin";
+import Executor, { Vars } from "@/src/engine/executor";
+import { Plugin } from "@/src/engine/plugin";
 
 type Seedrandom = seedrandom.StatefulPRNG<seedrandom.State.Arc4>;
 
 export default class Rand implements Plugin {
   private readonly _randoms = new Map<string, Seedrandom>();
-  constructor({ seed }: Props<{ seed: string }>) {
+  constructor(executor: Executor) {
+    const { seed } = executor.props;
     this._randoms.set("", seedrandom(seed ?? "slithytoves", { state: true }));
   }
   export(into: Vars): void {

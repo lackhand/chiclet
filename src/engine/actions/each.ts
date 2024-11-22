@@ -1,8 +1,8 @@
 import Pass from "./pass";
-import { Key } from "@/src/util/jpath";
+import { Key } from "@/src/util/objectPath";
 import Action from "@/src/engine/action";
 import Executor from "@/src/engine/executor";
-import { Parser } from "@/src/engine/parser";
+import Parser from "@/src/engine/parser";
 
 export default abstract class Each<T extends Action = Action> extends Action<
   T | Pass
