@@ -3,7 +3,7 @@ import React, { useState } from "react";
 export default function Sidebar({
   children,
 }: React.PropsWithChildren): React.JSX.Element {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <aside

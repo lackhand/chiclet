@@ -1,54 +1,61 @@
 start {
   jump "scene1"
 }
-scene1 "diner" "bgmusic" "phoenix" "larry" "larry.panicked" {
-  - wait=0 {
-    diner fade=0
-    larry fade=1 !="panicked"
-    phoenix @="left" dumb=0 stinky=0 ugly=0
-    bgmusic "start"
+scene1 "diner" "phoenix" "larry" "larry.panicked" {
+  tell "nowait" "" {
+    diner "nofade" ""
+    larry name="Larry" at="right" is="panicked" "fade" ""
+    phoenix name="Phoenix" at="left" dumb=0 stinky=0 evil=0
   }
-  choice {
-    "dumb!" {
-      phoenix dumb=4;
-    }
-    "stinky" {
-      phoenix stinky=4;
-    }
-    "evil" {
-      phoenix ugly=4;
+  while {
+    choice {
+        r#"dumb${phoenix.dumb ? "er" : ""}!"# {
+        phoenix dumb="${phoenix.dumb+1}"
+      }
+      r#"stink${phoenix.stinky ? "ier" : "y"}"# {
+        phoenix stinky="${phoenix.stinky+1}"
+      }
+      "evil" {
+        phoenix evil="${phoenix.evil+1}"
+      }
+      "no more!" if="phoenix.dumb + phoenix.stinky + phoenix.evil > 2" {
+        goto0 break=true
+      }
     }
   }
+
   when {
-    "phoenix.dumb > 0" {
-      phoenix "I was dumb."
+    "phoenix.dumb > phoenix.stinky" {
+      phoenix name="Phoenix (dumb)" "I was really dumb."
     }
-    "phoenix.stinky > 0" {
-      phoenix "I was stinky."
+    "phoenix.stinky > phoenix.evil" {
+      phoenix name="Phoenix (stinks)" "I was stinky."
     }
-    "phoenix.evil > 0" {
-      phoenix "I was downright evil."
+    "phoenix.evil > phoenix.dumb" {
+      phoenix name="Phoenix (evil)" "I was downright evil."
+    }
+    else {
+      phoenix "It was just regular old me."
     }
   }
-  larry r#"oh god ${phoenix.stinky >= 4 ? "stinky" : ""} phoenix..."# {
+  larry r#"oh god ${phoenix.stinky >= 4 ? "stinky" : ""} ${phoenix.name}..."# {
     - "... I killed him..."
-    - "it was a mistake you gotta believe me"
-    - !="thoughtful" r#"_it was not a mistake ${phoenix.dumb > 5 ? "you idiot hehehe" : ""}_"#
-    - !="angry" "but he deserved it"
-    - !="" wait=0
+    - "it was a mistake you gotta believe me, ${larry.name}, myself!"
+    - is="thoughtful" r#"_it was not a mistake ${phoenix.dumb > 5 ? "you idiot hehehe" : ""}_"#
+    - is="angry" "but he deserved it"
   }
   phoenix "wtf I asked what you wanted for breakfast." {
     - "subtext: ..."
-    - wait=0 "annoyed" "wait larry"
+    - is="annoyed" "nowait" "wait ${larry.name}"
   }
   choice {
     "why do you do this you goddamn idiot." target="scene2"
-    "you goddamn idiot, ${actor.larry.name}" {
+    "you goddamn idiot, ${larry.name}" {
       larry at="right" from="outright" "dat's right!"
       jump "scene3"
     }
-    "its fine don't worry" if=r"actor.phoenix.sucker > 2" {
-      set sucker=12
+    "its fine don't worry" if="phoenix.dumb > 2" {
+      phoenix dumb=(int)"phoenix.dumb + 2"
     }
   }
 }

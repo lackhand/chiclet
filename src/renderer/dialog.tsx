@@ -7,7 +7,8 @@ import React, {
 } from "react";
 import { Dialog as DialogType } from "./useDialog";
 import Card from "./card";
-import Typewriter from "./typewriter/typewriter";
+import Typewriter from "./typewriter";
+import { ErrorBoundary } from "react-error-boundary";
 
 interface Props {
   dialog?: DialogType;
@@ -49,7 +50,9 @@ export default function Dialog({ dialog, next }: Props): React.JSX.Element {
         <>
           <Nametag dialog={dialog} />
           <Card className="w-full basis-11/12">
-            <Typewriter key={dialog.text} {...{ text, skip, onComplete }} />
+            <ErrorBoundary fallback={<div>Something went wrong</div>}>
+              <Typewriter key={dialog.text} {...{ text, skip, onComplete }} />
+            </ErrorBoundary>
             {typing ? undefined : <Throbber />}
           </Card>
         </>
@@ -59,7 +62,11 @@ export default function Dialog({ dialog, next }: Props): React.JSX.Element {
 }
 
 function Nametag({ dialog }: { dialog: DialogType }) {
-  return <Card className="ml-2 w-1/2 basis-1/12">{dialog.name}</Card>;
+  return (
+    <Card className="ml-2 w-1/2 basis-1/12">
+      {dialog.actor?.name ?? dialog.name}
+    </Card>
+  );
 }
 
 function Throbber({}) {

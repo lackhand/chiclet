@@ -1,4 +1,4 @@
-import Executor, { Dollar } from "@/src/engine/executor";
+import Executor from "@/src/engine/executor";
 import { arr, Path } from "@/src/util/objectPath";
 import { Plugin, PluginConstructor } from "@/src/engine/plugin";
 import Rand from "./rand";
@@ -22,24 +22,28 @@ export default class Dummy implements Plugin {
       }, executor.plugin(Rand).scale(1000, 250, "dummy"));
     });
   }
-  export(_into: Dollar): void {}
-  import(_from: Dollar): void {}
   process(_event: any): any {
     return undefined;
   }
 }
 
-const ERROR_PREFIX = arr`error errors`;
 export class PrintLog implements Plugin {
-  export(_into: Dollar): void {}
-  import(_from: Dollar): void {}
   constructor(executor: Executor) {
     const pubsub = executor.pubsub;
-    pubsub.subscribe([], (topic, error) => {
-      if (ERROR_PREFIX.includes(topic[0])) {
-        console.error(topic, error);
-      } else {
-        console.log(topic, error);
+    pubsub.subscribe([], (topic, msg) => {
+      switch (topic[topic.length - 1]) {
+        case "debug":
+          console.debug(topic, msg);
+          break;
+        case "warn":
+          console.warn(topic, msg);
+          break;
+        case "error":
+          console.error(topic, msg);
+          break;
+        default:
+          console.log(topic, msg);
+          break;
       }
     });
   }

@@ -3,11 +3,18 @@ import ExecutorContext from "./executorContext";
 import { arr, Path } from "@/src/util/objectPath";
 import { Value } from "@/src/engine/parser";
 
+export type Data = undefined | Value | Value[];
+
+export type Actor = {
+  name?: string;
+  [k: string]: Data;
+};
 export type Dialog = {
   name: string;
+  actor: Actor;
   text: string;
   values: Value[];
-  props: [[name: string, value: Value]];
+  props: Record<string, Data>;
 };
 
 const TELL_TOPIC = arr`tell`;

@@ -28,6 +28,6 @@ export default class Export extends BaseStorage {
   }
 }
 
-const ERRORS_DB = arr`errors save db`;
-const ERRORS_SLOT = arr`errors save slot`;
+const ERRORS_DB = arr`save db error`;
+const ERRORS_SLOT = arr`save slot error`;
 const SAVE_SLOT = arr`save slot`;

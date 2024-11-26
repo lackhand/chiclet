@@ -31,7 +31,7 @@ export default class Import extends BaseStorage {
   }
 }
 
-const ERRORS_DB = arr`errors load db`;
-const ERRORS_SLOT = arr`errors load slot`;
+const ERRORS_DB = arr`load db error`;
+const ERRORS_SLOT = arr`load slot error`;
 const ENGINE_RESETTING = arr`engine resetting`;
 const LOADED_SLOT = arr`load slot`;

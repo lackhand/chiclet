@@ -19,8 +19,9 @@ export default class Goto0 extends Action<never> {
   }
   static parse(parser: Parser): Goto0 {
     const guard = parser.properties.if ?? true;
-    const _break = BREAK.includes(last(parser.values));
-    return new Goto0(guard, _break);
+    const _break =
+      parser.properties.break ?? BREAK.includes(last(parser.values));
+    return new Goto0(guard, !!_break);
   }
   async run(exec: Executor) {
     if (exec.eval.boolean(this.guard)) {

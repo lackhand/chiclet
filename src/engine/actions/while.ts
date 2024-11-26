@@ -4,6 +4,7 @@ import Parser, { Value } from "@/src/engine/parser";
 import { last } from "@/src/util/objectPath";
 import Goto0 from "./goto0";
 import Pass from "./pass";
+import Each from "./each";
 
 const DO_NAMES = ["do"];
 
@@ -11,13 +12,11 @@ const DO_NAMES = ["do"];
 /// The implementation supports do/while, if.
 /// It does this using goto0 -- so ironically, the guard is actually the _last_ thing we do,
 /// and the main implementation of the
-export default class While extends Action {
+export default class While extends Each {
   do: boolean;
-  actions: Action[];
-  constructor(_do: boolean, guard: undefined | Value, actions: Action[]) {
-    super();
+  constructor(_do: boolean, guard: Value, actions: Action[]) {
+    super([...actions, new Goto0(guard)]);
     this.do = _do;
-    this.actions = [...actions, new Goto0(guard ?? true), new Pass()];
   }
   static parse(parser: Parser) {
     return new While(
@@ -27,7 +26,7 @@ export default class While extends Action {
         parser.properties.cond ??
         parser.properties.guard ??
         (last(parser.values) as string) ??
-        parser.throw("Missing while check"),
+        true,
       parser.parseChildren(null)
     );
   }

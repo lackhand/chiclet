@@ -1,5 +1,5 @@
 import Stack from "@/src/util/stack";
-import { Key, Path } from "@/src/util/objectPath";
+import { arr, Key, Path } from "@/src/util/objectPath";
 import Action from "@/src/engine/action";
 import { Batcher } from "@/src/util/promises";
 import {
@@ -201,16 +201,16 @@ export default class Executor {
   }
 }
 
-const ENGINE_BEFORE = ["engine", "before"];
-const ENGINE_AFTER = ["engine", "after"];
-const STACK_PUSHED = ["stack", "pushed"];
-const STACK_POPPED = ["stack", "popped"];
-const FRAME_BEFORE = ["frame", "before"];
-const FRAME_AFTER = ["frame", "after"];
-const FRAME_MISSING = ["frame", "missing"];
-const ACTION_BEFORE = ["action", "before"];
-const ACTION_AFTER = ["action", "after"];
-const ACTION_CONTINUING = ["action", "continuing"];
-const ACTION_RESOLVING = ["action", "resolving"];
-const ACTION_FINALLY = ["action", "finally"];
-const ERRORS_ACTION_RUN = ["errors", "action", "run"];
+const ENGINE_BEFORE = arr`engine before`;
+const ENGINE_AFTER = arr`engine after`;
+const STACK_PUSHED = arr`stack pushed debug`;
+const STACK_POPPED = arr`stack popped debug`;
+const FRAME_BEFORE = arr`frame before debug`;
+const FRAME_AFTER = arr`frame after debug`;
+const FRAME_MISSING = arr`frame missing debug`;
+const ACTION_BEFORE = arr`action before`;
+const ACTION_AFTER = arr`action after`;
+const ACTION_CONTINUING = arr`action continuing debug`;
+const ACTION_RESOLVING = arr`action resolving debug`;
+const ACTION_FINALLY = arr`action finally debug`;
+const ERRORS_ACTION_RUN = arr`action run error`;
