@@ -1,0 +1,169 @@
+import Stack from "@/src/util/stack";
+import plugin from "./plugins";
+import { arr, last } from "../util/objectPath";
+import loader from "./loader";
+import { Beat, typeBeats } from "./beats";
+import { channel } from "../util/promises";
+import Signal from "../util/signal";
+
+export type Key = number | string;
+export type Path = ReadonlyArray<Key>;
+
+export class Exec {
+  #waitingForUser = false;
+  #userChannel = channel();
+
+  #stack = new Stack<Path>();
+  #here = [] as Path;
+  #count = 0;
+
+  onEngine = new Signal("engine").bridgeTo(Signal.INFO);
+  onFrame = new Signal("frame").bridgeTo(Signal.DEBUG);
+  beforeFrame = new Signal("before").bridgeTo(this.onFrame);
+  afterFrame = new Signal("after").bridgeTo(this.onFrame);
+  frameMissing = new Signal("frame missing").bridgeTo(Signal.DEBUG);
+  frameSkip = new Signal("skip").bridgeTo(this.onFrame);
+  beatDo = new Signal("beatDo").bridgeTo(this.onEngine);
+
+  get here(): Path {
+    return this.#here;
+  }
+  get count(): number {
+    return this.#count;
+  }
+
+  /// The engine promises it will wait for user input before proceeding to the next step.
+  trapUser() {
+    this.#waitingForUser = true;
+  }
+  userReady() {
+    const meaningful = this.#waitingForUser;
+    this.#waitingForUser = false;
+    if (meaningful) {
+      this.#userChannel[1]();
+    }
+  }
+
+  import(src: any) {
+    const exec = src.exec;
+    if (!exec) return;
+    const { stack, here, waitingForUser } = exec;
+    while (!this.#stack.isEmpty) {
+      this.pop();
+    }
+    for (let frame of stack ?? []) {
+      this.pushAbsolute(frame as Path);
+    }
+    this.#here = here ?? [];
+    this.#waitingForUser = !!waitingForUser;
+  }
+
+  export(): object {
+    return {
+      exec: {
+        stack: this.#stack.values,
+        here: this.#here,
+        waitingForUser: !!this.#waitingForUser,
+      },
+    };
+  }
+
+  pushNext(n?: number, from = this.#here): void {
+    if ("number" !== typeof last(from)) return;
+    let next = [...from];
+    n ??= (next[next.length - 1] as number) + 1;
+    next[next.length - 1] = n;
+    this.pushAbsolute(next);
+  }
+
+  pushChild(key: Key): Path {
+    return this.pushAbsolute([...this.#here, key]);
+  }
+
+  pushRelative(key: Key): Path {
+    const module = this.here[0];
+    return this.pushAbsolute([module, key, 0]);
+  }
+
+  pushAbsolute(path: Path): Path {
+    this.#stack.push(path);
+    this.onFrame.notify("push", path);
+    return path;
+  }
+  push(...keys: string[]): Path {
+    switch (keys.length) {
+      case 0:
+        return this.pushRelative("default");
+      case 1:
+        return this.pushRelative(keys[0]);
+      default:
+        return this.pushAbsolute(keys);
+    }
+  }
+
+  pop(): undefined | Path {
+    const path = this.#stack.pop();
+    this.onFrame.notify("pop", path);
+    return path;
+  }
+
+  async run(start?: undefined | null | Key | Path): Promise<void> {
+    this.setStart(start);
+    try {
+      this.onEngine.notify("before", this);
+      let frame;
+      while ((frame = this.pop())) {
+        this.#here = frame;
+        this.beforeFrame.notify(frame);
+        try {
+          let beat = await loader.load(frame);
+          this.doBeat(beat);
+          if (this.#waitingForUser) {
+            await this.#userChannel[0]();
+          }
+        } catch (e) {
+          console.error(this, "Frame error", e);
+        } finally {
+          this.afterFrame.notify(frame);
+        }
+      }
+    } finally {
+      this.onEngine.notify("after", this);
+    }
+  }
+
+  private async doBeat(beat?: Beat) {
+    const parent = loader.peekAt(-1);
+    if (!beat) {
+      if (typeBeats(parent) && parent.afterAll) {
+        parent.afterAll();
+      }
+      this.frameMissing.notify(this.#here);
+      return;
+    }
+    // Restore the next frame, since there's something here to try.
+    this.pushNext();
+    this.#count++;
+    if (beat.if && !beat.if()) {
+      this.frameSkip.notify(this.#here);
+      return;
+    }
+    if (typeBeats(parent) && parent.beforeEach) {
+      parent.beforeEach();
+    }
+    this.beatDo.notify(beat, this);
+    beat.do();
+  }
+
+  private setStart(start: undefined | null | Key | Path) {
+    start ??= arr`start default ${0}` as Path;
+    if (!Array.isArray(start)) {
+      start = [start as Key, "default", 0] as Path;
+    }
+    if ("number" !== typeof last(start)) {
+      start = [...start, 0] as Path;
+    }
+    this.pushAbsolute(start);
+  }
+}
+export default plugin.add(new Exec());

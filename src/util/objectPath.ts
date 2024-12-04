@@ -1,4 +1,4 @@
-export type Key = string | number | symbol;
+export type Key = string | number;
 export type Path = Readonly<Key[]>;
 export type PathString = string; // String representation of a path.
 

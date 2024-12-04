@@ -1,5 +1,6 @@
 export type Resolver<T> = (t: T | PromiseLike<T>) => void;
 export type Rejector = (reason: any) => void;
+
 export interface PromiseParts<T> {
   promise: Promise<T>;
   resolve: Resolver<T>;
@@ -86,67 +87,89 @@ export async function* asyncIterateAll<T>(
   }
 }
 
-export class CountDownLatch extends Promise<void> {
-  private _count = 0;
-  private _resolve!: Resolver<void>;
-  private _reject!: Rejector;
-  constructor() {
-    super((resolve, reject) => {
-      this._resolve = resolve;
-      this._reject = reject;
-    });
+/// Sets up a prod/consumer channel with internal infinite queueing.
+/// There can only be at most one consumer at a time, which will block waiting for input.
+export function channel<T = void>(
+  init?: T
+): [consume: () => Promise<T>, produce: (t: T) => void] {
+  const queued: T[] = [];
+  if (init !== undefined) {
+    queued.push(init);
   }
-
-  request() {
-    this._count++;
-    return () => {
-      this._count--;
-      if (this._count <= 0) {
-        this._resolve();
+  let resolve: undefined | ((t: T) => void);
+  return [
+    (): Promise<T> => {
+      if (queued.length) {
+        return Promise.resolve(queued.shift()!);
       }
-    };
-  }
-
-  abort(reason: any) {
-    this._reject(reason);
-  }
+      if (resolve) {
+        throw new Error("Consuming while someone else is already consuming!");
+      }
+      let promise;
+      ({ promise, resolve } = promiseParts());
+      return promise;
+    },
+    (t: T) => {
+      queued.push(t);
+      if (resolve) {
+        // There's someone waiting for this result, so wake them up.
+        resolve(queued.shift()!);
+        resolve = undefined;
+      }
+    },
+  ];
 }
 
-// Each time it's awaited, it sleeps until all extant promises are resolved.
-type PromiseThen<T = void> = Promise<T>["then"];
-type PromiseCatch<T = void> = Promise<T>["catch"];
-type PromiseFinally<T = void> = Promise<T>["finally"];
-export class Batcher {
-  private _outstanding = new Set<Promise<void>>();
-
-  async then(
-    resolve: Parameters<PromiseThen>[0],
-    _reject: Parameters<PromiseThen>[1]
-  ): ReturnType<PromiseThen> {
-    while (this._outstanding.size > 0) {
-      for (let first of this._outstanding) {
-        await first;
-        this._outstanding.delete(first);
-        break;
-      }
+type AnyF<T extends any[] = any[], V = any> = (...args: T) => V;
+type DupF<F1 extends AnyF> = (...args: Parameters<F1>) => ReturnType<F1>;
+export function once<F1 extends AnyF>(cb: F1): DupF<F1> {
+  let passed: undefined | boolean = undefined;
+  let value: any = undefined;
+  let threw: any = undefined;
+  return (...args) => {
+    switch (passed) {
+      case true:
+        return value!;
+      case false:
+        throw threw;
+      default:
+        try {
+          value = cb(...args);
+          passed = true;
+          return value;
+        } catch (e) {
+          threw = e;
+          passed = false;
+          throw e;
+        }
     }
-    resolve?.();
-    return void 0;
-  }
-  catch(reject: Parameters<PromiseCatch>[0]): ReturnType<PromiseCatch> {
-    return this.then(null, reject);
-  }
-  finally(handle: Parameters<PromiseFinally>[0]): ReturnType<PromiseFinally> {
-    return this.then(handle, handle) as Promise<void>;
-  }
-  push(onResolve: Resolver<void>): Resolver<void> {
-    const parts = promiseParts();
-    this._outstanding.add(parts.promise);
-    const oldResolve = parts.resolve;
-    return () => {
-      oldResolve();
-      this._outstanding.delete(parts.promise);
-      onResolve();
-    };
-  }
+  };
+}
+
+/// A latch batches up operations -- repeatable countdownLatch style.
+/// When called, it returns an "unblocker" method.
+/// The unblocker (when called) returns a promise which will be fulfilled when equal blocks and unblocks have been called.
+/// This is always during execution of an unblock (because we start at 0 and require a block before giving access to the promise).
+/// At this point future unblocks return a novel promise.
+export function latch(log = true): () => () => Promise<void> {
+  let { resolve, promise } = promiseParts();
+  let count = 0;
+
+  return () => {
+    if (log) console.trace("Blocking");
+    ++count;
+    return once(() => {
+      if (log) console.trace("Unblocking");
+      if (--count !== 0) return promise;
+      resolve();
+      const oldPromise = promise;
+      ({ resolve, promise } = promiseParts());
+      return oldPromise;
+    });
+  };
+}
+
+export function run<T>(t: T, cb: (t: T) => void): T {
+  cb.call(t, t);
+  return t;
 }
