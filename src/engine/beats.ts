@@ -1,15 +1,13 @@
 import unwrap, { Source } from "../util/lazy";
 import exec, { Path } from "./exec";
 
-// Note the `tell` action lives under each individual actor (there isn't a generic).
-// So it somewhat unusually gets preregistered in e.g. `actors.ts`
-//     export someChara = actor('someChara');
-// and then used in a scene in place of some other beat:
-//     import { someChara } from "./actors.ts"
-//     export const someScene = scene(
-//       someChara({angry: 2, tell: "some static text"}),  // or tell: () => `some${dynamic}`...
-//       someChara(() => `I am dynamically ${someChara.name}!`)
-//     )
+/**
+ * Utilities for each unit of execution in the `exec`.
+ *
+ *
+ *
+ *
+ */
 
 export interface Beat {
   do(): void;
@@ -106,7 +104,7 @@ function genericLoop(
       exec.pushChild(isDo ? 0 : Number.MAX_SAFE_INTEGER);
     },
     afterAll() {
-      if (unwrap(guard)) {
+      if (unwrap(guard) ?? true) {
         exec.pushNext(0);
       }
     },

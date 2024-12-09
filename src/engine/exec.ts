@@ -7,8 +7,31 @@ import { channel } from "../util/promises";
 import Signal from "../util/signal";
 
 export type Key = number | string;
-export type Path = ReadonlyArray<Key>;
+export type Path<K = Key> = ReadonlyArray<K>;
 
+/**
+ * An observer of "beats".
+ *
+ * A "beat" is logically a `(): void` closure (it's actually implemented as `interface { do(): void }` but: same idea).
+ * It maintains its current operating state in a "stack" of next pointers -- the tip is the next one which will be executed.
+ * The currently executing one is identified by `here`.
+ * Importantly, lots of beats are themselves containers of beats (for instance: scenes, or beats where we wait for a response from the user, or conditional forks etc).
+ * They support this with `interface {get(number): undefined|Beat}` (the first undefined number ends the element; see Beats for more).
+ * As a result, these pointers are actually "paths" -- arrays whose prefices are string identifiers that should be loaded
+ * (modules, and then properties within those modules identifying externally visible scene and branch information)
+ * and whose suffices are integers (array offsets within those branches to the relevant beat).
+ *
+ * This is serializable between beats (, assuming all other variable state is serializable)!
+ * Save the stack, the here ptr, and whether the exec is blocked (I think it will always be blocked? I guess it depends on our impl!s).
+ * On restore, resume from that state without executing anything (or if !blocked, continue to next instruction).
+ * Tada!
+ *
+ * Beats' closures can interact with the exec engine itself to modify control, in addition to emitting their own side effects.
+ * These side effects are usually:
+ * - changes to actor state & dialog lines. The `actor` beat factory is helpful here, creating an appropriate safely thunk'd beat.
+ * - questions to the player. See `ask`.
+ * - Control flow statements, which interact directly with exec (though see beats for slightly higher level primitives).
+ */
 export class Exec {
   #waitingForUser = false;
   #userChannel = channel();

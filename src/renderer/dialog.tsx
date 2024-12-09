@@ -3,7 +3,7 @@ import Card from "./card";
 import Typewriter from "./typewriter";
 import { ErrorBoundary } from "react-error-boundary";
 import { Told } from "../engine/tell";
-import actor, { Name } from "../engine/actor";
+import actor, { Key } from "../engine/actor";
 
 interface Props {
   told: Told;
@@ -61,8 +61,8 @@ export default function Dialog({ told, next }: Props): React.JSX.Element {
   );
 }
 
-function Nametag({ name }: { name: Name }) {
-  const display = (actor.plugin.get(name).display ??= name);
+function Nametag({ name }: { name: Key }) {
+  const display = (actor.plugin.get(name).name ??= name);
   return <Card className="ml-2 w-1/2 basis-1/12">{display}</Card>;
 }
 

@@ -8,48 +8,44 @@ export interface Choice {
   key: number;
   text: string;
 }
-export class Ask implements Plugin {
-  #choices: Choice[] = [];
-  #chose?: number;
-  readonly onAsk = new Signal("ask").bridgeTo(Signal.INFO);
-  readonly onChoice = new Signal("choice").bridgeTo(Signal.INFO);
 
-  get choices(): Choice[] {
-    return this.#choices!;
-  }
+export class Ask implements Plugin {
+  #answered?: number;
+
+  readonly onAsk = new Signal("ask").bridgeTo(Signal.INFO);
+  readonly onAnswer = new Signal("answer").bridgeTo(Signal.INFO);
 
   import(source: any): void {
-    const ask = source.ask;
-    this.#choices = ask?.opts;
-    this.#chose = ask?.chose;
+    this.#answered = source.ask?.answered;
   }
   export(): undefined | object {
     return {
       ask: {
-        choices: this.#choices,
-        ...(this.#chose && { chose: this.#chose }),
+        ...(this.#answered && { answered: this.#answered }),
       },
     };
   }
-  ask(...opts: Choice[]) {
-    this.#chose = undefined;
-    this.#choices = opts;
+  ask(asks: OptionBeat[]) {
+    const displayOptions = asks
+      .map((beat, key) => {
+        if (beat.if && !beat.if()) return undefined;
+        let text = unwrap(beat.text);
+        if (!text) return undefined;
+        return { key, text } as Choice;
+      })
+      .filter((x) => x != undefined);
+
+    this.#answered = undefined;
     exec.trapUser();
-    this.onAsk.notify(opts);
+    this.onAsk.notify(displayOptions);
   }
-  get choice() {
-    return this.#chose;
+  get answer() {
+    return this.#answered;
   }
-  choose(c: number) {
-    for (let opt of this.#choices) {
-      if (c == opt.key) {
-        this.#chose = c;
-        this.#choices = [];
-        exec.userReady();
-        this.onChoice.notify(opt);
-        return;
-      }
-    }
+  setAnswer(c: number) {
+    this.#answered = c;
+    exec.userReady();
+    this.onAnswer.notify(c);
   }
 }
 const askPlugin = plugin.add(new Ask());
@@ -65,16 +61,18 @@ export default function ask(...options: OptionBeat[]): AskBeat {
       // until the user has specified a "good" answer, which is our branch.
       exec.pop();
 
+      // We could handle other types of choices -- free text! -- but we don't.
+      // Just numbers at least for now.
       if (
-        "number" === typeof askPlugin.choice &&
-        askPlugin.choice >= 0 &&
-        askPlugin.choice < options.length
+        "number" === typeof askPlugin.answer &&
+        askPlugin.answer >= 0 &&
+        askPlugin.answer < options.length
       ) {
-        exec.pushNext(askPlugin.choice);
+        exec.pushNext(askPlugin.answer);
         return;
       }
       // Otherwise we're not done yet, and loop back to here.
-      // But: We need user input as well before we continue.
+      // But: We know we'll need user input as well before we continue.
       exec.trapUser();
       exec.pushNext(options.length);
     },
@@ -85,16 +83,9 @@ export default function ask(...options: OptionBeat[]): AskBeat {
       return options[i];
     },
     do() {
-      const displayOptions = options
-        .map((beat, key) => {
-          if (beat.if && !beat.if()) return undefined;
-          let text = unwrap(beat.text);
-          if (!text) return undefined;
-          return { key, text } as Choice;
-        })
-        .filter((x) => x != undefined);
-      askPlugin.ask(...displayOptions);
+      askPlugin.ask(options);
       // Then: jump into the special get-the-answers element (see `get`, it's inserted at the end).
+      // This is a push because when we're done, naively, we'll keep going from here.
       exec.pushChild(options.length);
     },
   };

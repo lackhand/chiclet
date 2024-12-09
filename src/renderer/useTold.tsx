@@ -1,6 +1,7 @@
-import { useCallback, useSyncExternalStore } from "react";
-import tell, { Told } from "../engine/tell";
+import { useSyncExternalStore } from "react";
 import exec from "../engine/exec";
+
+const ready = () => exec.userReady();
 
 export default function useTold(): [told: Told, next: () => void] {
   const told = useSyncExternalStore(
@@ -13,6 +14,5 @@ export default function useTold(): [told: Told, next: () => void] {
       }),
     () => tell.told
   );
-  const ready = useCallback(exec.userReady.bind(exec), []);
   return [told, ready];
 }
