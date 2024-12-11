@@ -60,5 +60,35 @@ export class Settings implements Plugin {
       ),
     };
   }
+
+  // Keeps aware of window specifics.
+  get left() {
+    return 0;
+  }
+  get right() {
+    return window.innerWidth;
+  }
+  get top() {
+    return 0;
+  }
+  get bottom() {
+    return window.innerHeight;
+  }
+  get front() {
+    return +50;
+  }
+  get back() {
+    return -50;
+  }
+
+  get cx() {
+    return (this.right + this.left) / 2;
+  }
+  get cy() {
+    return (this.bottom + this.top) / 2;
+  }
+  get cz() {
+    return (this.front + this.back) / 2;
+  }
 }
 export default plugin.add(new Settings());

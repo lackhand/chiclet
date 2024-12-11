@@ -2,6 +2,7 @@ import React from "react";
 import Sidebar from "./sidebar";
 import Logs from "./logs";
 import plugin from "../engine/plugins";
+import GamePane from "./gamePane";
 
 export class Renderer {
   render(): React.JSX.Element {

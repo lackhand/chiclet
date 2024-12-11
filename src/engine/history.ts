@@ -3,90 +3,62 @@ import settings from "./settings";
 import ask, { type Choice } from "./ask";
 import actor from "./actor";
 import Signal from "@/src/util/signal";
-import { Key } from "./exec";
+import exec, { Key } from "./exec";
 
-interface BaseRecord {
+interface BaseHistoryEntry {
   type: string;
   i: number;
 }
-export interface Tell extends BaseRecord {
+export interface Tell extends BaseHistoryEntry {
   type: "tell";
   key: Key;
   text: string;
 }
-export interface Ask extends BaseRecord {
+
+export interface Ask extends BaseHistoryEntry {
   type: "ask";
   opts: string[];
 }
-export interface Answer extends BaseRecord {
+export interface Answer extends BaseHistoryEntry {
   type: "answer";
   key: Key;
   text: string;
 }
-export type Record = Tell | Ask | Answer;
+export type HistoryEntry = Tell | Ask | Answer;
 
-const ASK_PREDICATE = { type: "ask" } as Partial<Ask>;
-const TELL_PREDICATE = { type: "tell" } as Partial<Tell>;
 export class History {
-  #count = 0;
-  #data: Record[] = [];
+  #data: HistoryEntry[] = [];
 
-  get data(): Readonly<Record[]> {
+  get data(): Readonly<HistoryEntry[]> {
     return this.#data;
-  }
-  #rfind<T extends Record>(predicate: Partial<T>): undefined | T {
-    const evals = Object.entries(predicate);
-    for (let j = this.#data.length - 1; j >= 0; --j) {
-      const here: any = this.#data[j];
-      for (let [k, v] of evals) {
-        if (here[k] != v) continue;
-      }
-      return here;
-    }
-    return undefined;
-  }
-  get told(): Tell | undefined {
-    return this.#rfind(TELL_PREDICATE);
-  }
-  get asked() {
-    return this.#rfind(ASK_PREDICATE);
   }
 
   readonly onEvent = new Signal("history").bridgeTo(Signal.INFO);
 
   _unsubs = [
-    actor.plugin.onTell.add((key: Key, text: string) => {
-      this.#push({
-        type: "tell",
-        key,
-        text,
-      });
+    actor.plugin.onAct.add(({ key, tell }) => {
+      tell && this.#push({ type: "tell", key, text: tell });
     }),
     ask.plugin.onAsk.add((choices: Choice[]) => {
       let opts: string[] = [];
       for (let choice of choices) {
         opts[choice.key] = choice.text;
       }
-      this.#push({
-        type: "ask",
-        opts,
-      });
+      this.#push({ type: "ask", opts });
     }),
     ask.plugin.onAnswer.add((opt: Choice) => {
-      this.#push({
-        type: "answer",
-        ...opt,
-      });
+      this.#push({ type: "answer", ...opt });
     }),
   ];
-  #push(record: Partial<Record>) {
-    record.i = this.#count++;
+  #push(record: Partial<HistoryEntry>) {
+    const count = exec.count;
+    record.i = count;
     // Because React, this wants to be a new instance on each append.
     this.#data = [
       ...this.#data.slice(-(settings.historySize.value - 1)),
-      record as Record,
+      record as HistoryEntry,
     ];
-    this.onEvent.notify(this.#count);
+    this.onEvent.notify(count);
   }
   export(): object {
     return {
@@ -96,8 +68,7 @@ export class History {
     };
   }
   import(from: any): void {
-    this.#count = from.log?.count ?? 0;
-    this.#data = [...(from.log?.data ?? [])];
+    this.#data = from.log?.data ?? [];
   }
 }
 export default plugin.add(new History());

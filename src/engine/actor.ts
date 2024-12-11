@@ -1,9 +1,9 @@
 import unwrap, { Source, SourceObject } from "@/src/util/lazy";
 import plugin from "./plugins";
 import type { At } from "./stage";
-import { all, Beats } from "./beats";
+import { all, Beat, Beats } from "./beats";
 import Signal from "../util/signal";
-import { Key } from "./exec";
+import exec, { Key } from "./exec";
 
 export type Is = string;
 export interface Tween {}
@@ -17,48 +17,75 @@ export type Audio = AudioObject | AudioKey;
 
 export type Actor = {
   key: Key;
-  name?: string;
+  actedOn: number;
+  mutatedOn: number;
+  name: string;
+  tell: string;
+
   is?: Is;
   at?: At;
   audio?: Audio;
   tween?: Tween;
+  [k: string]: any;
 };
 export type ActorDelta = Partial<SourceObject<Actor>> & {
   if?: Source<boolean>;
-  tell?: Source<string>;
+  do?: () => void;
+
+  key?: never;
+  actedOn?: never;
+  mutatedOn?: never;
 };
 export type Delta = Source<ActorDelta | string>;
-
 export class Actors {
   #cast = new Map<Key, Actor>();
-  readonly onNew = new Signal("newActor").bridgeTo(Signal.INFO);
-  readonly onChange = new Signal("actor").bridgeTo(Signal.INFO);
-  readonly onTell = new Signal("tell").bridgeTo(Signal.INFO);
+  #fg: Key = "";
+
+  get fg() {
+    return this.get(this.#fg);
+  }
+
+  readonly onNew = new Signal<[Key]>("newActor").bridgeTo(Signal.INFO);
+  readonly onAct = new Signal<[Actor]>("actorActing").bridgeTo(Signal.INFO);
+  readonly onReflectiveMutation = new Signal<
+    [key: Key, prop: string, old: any, _new: any]
+  >("reflectiveMutation").bridgeTo(Signal.INFO);
+  readonly onFG = new Signal<[Actor]>("fg").bridgeTo(Signal.DEBUG);
 
   get(key: Key): Actor {
     let prev = this.#cast.get(key);
     if (prev) {
       return prev;
     }
-    prev = { key, name: key?.toString() ?? "" };
+    prev = {
+      key,
+      name: key?.toString() ?? "",
+      actedOn: exec.count,
+      mutatedOn: exec.count,
+      tell: "",
+    };
     this.#cast.set(key, prev);
     this.onNew.notify(key);
     return prev;
   }
-  #set(
-    key: Key,
-    actor: Actor,
-    delta: undefined | Partial<Actor>,
-    text: Source<undefined | string>
-  ): Actor {
+  #set(key: Key, actor: Actor, delta: undefined | Partial<Actor>): Actor {
     if (delta) {
       actor = { ...actor, ...delta };
-      this.onChange.notify(key);
+      this.onAct.notify(actor);
       this.#cast.set(key, actor);
+      if (delta.tell) {
+        this.#fg = key;
+        this.onFG.notify(actor);
+      }
     }
-    text = unwrap(text);
-    this.onTell.notify(key, text);
     return actor;
+  }
+  mutateField(key: Key, field: string, newValue: any) {
+    let actor = this.get(key);
+    const oldValue = (actor as any)[field];
+    (actor as any)[field] = newValue;
+    actor.mutatedOn = exec.count;
+    this.onReflectiveMutation.notify(key, field, oldValue, newValue);
   }
   *filter(predicate: (actor: Actor, key: Key) => any): Generator<Actor> {
     for (let [key, actor] of this.#cast) {
@@ -66,16 +93,18 @@ export class Actors {
     }
   }
 
-  // If `delta` is undefined, skip.
-  // If `delta` is a closure, call it.
   act(key: Key, origDelta: Delta): void {
     const actor = this.get(key);
     // We don't usually do this, but if we thunked the actor update itself -- dynamic keys? -- eval that now.
     let delta = unwrap(origDelta);
     if (delta === undefined) return;
-    // Maybe: it's just a text command. Do it.
+    // Maybe: it's just a tell command. Do it.
     if ("string" === typeof delta) {
-      this.#set(key, actor, undefined, delta);
+      this.#set(key, actor, {
+        actedOn: exec.count,
+        mutatedOn: exec.count,
+        tell: delta,
+      });
       return;
     }
     if (delta.key) throw new Error("You can't update an actors key (try name)");
@@ -86,12 +115,15 @@ export class Actors {
     if (delta === origDelta) {
       delta = { ...delta };
     }
-    // ... and extract the tell (, if any)...
-    const tell = delta["tell"] as Source<undefined | string>;
     // Remove keys we don't persist.
     delete delta["key"];
     delete delta["if"];
-    delete delta["tell"];
+
+    delete delta["actedOn"];
+    delete delta["mutatedOn"];
+    (delta as Actor).actedOn = exec.count;
+    (delta as Actor).mutatedOn = exec.count;
+
     for (let [k, v] of Object.entries(delta)) {
       let value = unwrap(v);
       if (value === undefined) {
@@ -100,7 +132,8 @@ export class Actors {
         (delta as any)[k] = value;
       }
     }
-    this.#set(key, actor, delta as Partial<Actor>, tell);
+    delete delta["do"];
+    this.#set(key, actor, delta as Partial<Actor>);
   }
 
   import(input: any) {
@@ -110,9 +143,10 @@ export class Actors {
         this.#cast.set(k, v as any);
       }
     }
+    this.#fg = input?.actors?.fg ?? "";
   }
   export(): object {
-    return { cast: Object.fromEntries(this.#cast) };
+    return { cast: Object.fromEntries(this.#cast), fg: this.#fg };
   }
 }
 const actors = plugin.add(new Actors());
@@ -136,13 +170,9 @@ export interface BeatFactory {
 /// This _is_ the act as a beat factory.
 /// However, it's _also_ the scratch space for the actor's variables.
 export default function actor(key: Key): BeatFactory & Actor {
-  const beatFactory = (...deltas: Delta[]): Beats => {
+  const beatFactory = (...deltas: Delta[]): Beat => {
     return all(
-      ...deltas.map((delta) => ({
-        do() {
-          actors.act(key, delta);
-        },
-      }))
+      ...deltas.map((delta) => ({ do: () => actors.act(key, delta) }))
     );
   };
   return new Proxy(beatFactory, {
@@ -151,11 +181,13 @@ export default function actor(key: Key): BeatFactory & Actor {
       return Reflect.get(actor, prop);
     },
     set: (_target, prop, value) => {
-      let actor = actors.get(key);
-      return Reflect.set(actor, prop, value);
+      if ("symbol" === typeof prop) return false;
+      actors.mutateField(key, prop, value);
+      return true;
     },
   }) as BeatFactory & Actor;
 }
 actor.plugin = actors;
-// Special reserved narrator actor.
-actor.nil = actor("");
+// Special reserved always-present narrator actor.
+// By convention, used as the background.
+actor.default = actor("");

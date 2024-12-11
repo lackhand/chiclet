@@ -1,34 +1,43 @@
-import React, { PropsWithChildren, useEffect, useMemo, useState } from "react";
+import React, {
+  PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import useChoices from "./useChoices";
-import useTold from "./useTold";
 import Choices from "./choices";
 import Dialog from "./dialog";
 import Camera from "./camera";
-import exec, { Path } from "../engine/exec";
+import exec from "../engine/exec";
+import unpropagated from "./unpropagated";
+import actor from "../engine/actor";
+
+const nextTell = unpropagated(() => exec.userReady());
 
 export default function GamePane({}): React.JSX.Element {
-  const [gutterStyles, setGutterStyles] = useState("");
   const [choices, choose] = useChoices();
-  const [told, toldNext] = useTold();
+  const actor = useFG();
   return (
-    <LetterBox onClick={toldNext}>
-      <Camera setGutterStyles={setGutterStyles} told={told}>
+    <LetterBox onClick={nextTell}>
+      <Camera>
         <Choices choices={choices} choose={choose} />
-        <Dialog told={told} next={toldNext} />
+        <Dialog actor={actor} next={nextTell} />
       </Camera>
     </LetterBox>
   );
 }
+function useFG() {
+  return useSyncExternalStore(
+    actor.plugin.onFG.boundAdd,
+    useCallback(() => actor.plugin.fg, [])
+  );
+}
 
 function useExecCount() {
-  const [count, setCount] = useState(-1);
-  useEffect(
-    () =>
-      exec.afterFrame.add(() => {
-        setCount(exec.count);
-      }),
-    []
-  );
+  const [count, setCount] = useState(exec.count);
+  useEffect(() => exec.afterFrame.add(() => setCount(exec.count)), []);
   return count;
 }
 

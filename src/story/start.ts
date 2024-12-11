@@ -3,7 +3,7 @@ import draw from "@/src/engine/draw";
 import exec from "@/src/engine/exec";
 import enactor from "@/src/renderer/enactor";
 import { arr } from "@/src/util/objectPath";
-import sprite from "./sprite";
+import sprite from "./start/sprite";
 
 draw.default = sprite;
 

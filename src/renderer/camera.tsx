@@ -1,24 +1,23 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import actor from "@/src/engine/actor";
-import stage from "@/src/engine/stage";
-import { type Tell } from "@/src/engine/history";
+import actor, { Actor } from "@/src/engine/actor";
 import draw from "@/src/engine/draw";
+import exec from "../engine/exec";
 
-interface Props {
-  tell: Tell;
-  setGutterStyles: (styles: string) => void;
-}
 export default function Camera({
-  setGutterStyles,
-  tell,
   children,
-}: React.PropsWithChildren<Props>): React.JSX.Element {
-  const actors = useMemo(
-    () => [...actor.plugin.filter((actor) => !!actor.at)],
-    [tell]
+}: React.PropsWithChildren<{}>): React.JSX.Element {
+  const [actors, setActors] = useState<Actor[]>(() => [
+    ...actor.plugin.filter(({ at }) => !!at),
+  ]);
+  // Subscribe to the frames...
+  useEffect(
+    () =>
+      exec.afterFrame.add(() =>
+        setActors([...actor.plugin.filter(({ at }) => !!at)])
+      ),
+    []
   );
-  useEffect(() => setGutterStyles(stage.), [tell]);
   return (
     <div
       className={`flex-none self-center justify-self-center w-6/12 aspect-[4/3] relative`}

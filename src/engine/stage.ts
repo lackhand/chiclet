@@ -5,11 +5,13 @@ export interface PxXY {
   unit: "px";
   x: number;
   y: number;
+  z: number;
 }
 export interface RelXY {
   unit?: "rel";
   x?: number | Scale;
   y?: number | Scale;
+  z?: number | Scale;
 }
 
 export type Point = PxXY | RelXY;
@@ -44,7 +46,7 @@ const DEFAULT_ATS = {
   bottom: { y: "+edge" },
 } as Record<string, Point>;
 
-const DEFAULT_DIMS: PxXY = { unit: "px", x: 480, y: 360 };
+const DEFAULT_DIMS: PxXY = { unit: "px", x: 480, y: 360, z: 100 };
 
 /**
  * Supports binding to geometry.
@@ -80,39 +82,31 @@ export class Stage implements Plugin {
   get h_2() {
     return this.dims.y / 2;
   }
-
-  get left() {
-    return 0;
-  }
-  get right() {
-    return window.innerWidth;
-  }
-  get top() {
-    return 0;
-  }
-  get bottom() {
-    return window.innerHeight;
+  get d_2() {
+    return this.dims.z / 2;
   }
 
-  // Center of window -- usually where we place centerstage...
-  get cx() {
-    return (this.right - this.left) / 2;
-  }
-  get cy() {
-    return (this.bottom - this.top) / 2;
-  }
-
-  getPixels(at: undefined | At): [x: number, y: number] {
+  getPixels(at: undefined | At): [x: number, y: number, z: number] {
     if ("string" === typeof at) {
       return this.#expandPoint(this.atValues[at]);
     }
     return this.#expandPoint(at);
   }
-  #expandPoint(at: undefined | Partial<Point>): [x: number, y: number] {
+  #expandPoint(
+    at: undefined | Partial<Point>
+  ): [x: number, y: number, z: number] {
     if (at?.unit === "px") {
-      return [this.#px(at.x, this.w_2), this.#px(at.y, this.h_2)];
+      return [
+        this.#px(at.x, this.w_2),
+        this.#px(at.y, this.h_2),
+        this.#px(at.z, this.d_2),
+      ];
     }
-    return [this.#scale(at?.x, this.w_2), this.#scale(at?.y, this.h_2)];
+    return [
+      this.#scale(at?.x, this.w_2),
+      this.#scale(at?.y, this.h_2),
+      this.#scale(at?.z, this.d_2),
+    ];
   }
   #px(value: undefined | number | Scale, dim: number): number {
     if ("string" === typeof value) {

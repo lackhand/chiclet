@@ -40,13 +40,15 @@ export class Exec {
   #here = [] as Path;
   #count = 0;
 
-  onEngine = new Signal("engine").bridgeTo(Signal.INFO);
-  onFrame = new Signal("frame").bridgeTo(Signal.DEBUG);
-  beforeFrame = new Signal("before").bridgeTo(this.onFrame);
-  afterFrame = new Signal("after").bridgeTo(this.onFrame);
-  frameMissing = new Signal("frame missing").bridgeTo(Signal.DEBUG);
-  frameSkip = new Signal("skip").bridgeTo(this.onFrame);
-  beatDo = new Signal("beatDo").bridgeTo(this.onEngine);
+  onEngine = new Signal<["before" | "after", Exec]>("engine").bridgeTo(
+    Signal.INFO
+  );
+  beforeFrame = new Signal<[Path]>("beforeFrame").bridgeTo(Signal.DEBUG);
+  beforeBeat = new Signal<[Beat]>("beforeBeat").bridgeTo(Signal.DEBUG);
+  onFrameWeird = new Signal<
+    ["missing" | "skipped" | "pushed" | "popped" | "done", undefined | Path]
+  >("frameEvent").bridgeTo(Signal.DEBUG);
+  afterFrame = new Signal<[Path]>("afterFrame").bridgeTo(Signal.INFO);
 
   get here(): Path {
     return this.#here;
@@ -110,7 +112,7 @@ export class Exec {
 
   pushAbsolute(path: Path): Path {
     this.#stack.push(path);
-    this.onFrame.notify("push", path);
+    this.onFrameWeird.notify("pushed", path);
     return path;
   }
   push(...keys: string[]): Path {
@@ -126,7 +128,7 @@ export class Exec {
 
   pop(): undefined | Path {
     const path = this.#stack.pop();
-    this.onFrame.notify("pop", path);
+    this.onFrameWeird.notify("popped", path);
     return path;
   }
 
@@ -161,20 +163,20 @@ export class Exec {
       if (typeBeats(parent) && parent.afterAll) {
         parent.afterAll();
       }
-      this.frameMissing.notify(this.#here);
+      this.onFrameWeird.notify("missing", this.#here);
       return;
     }
     // Restore the next frame, since there's something here to try.
     this.pushNext();
     this.#count++;
     if (beat.if && !beat.if()) {
-      this.frameSkip.notify(this.#here);
+      this.onFrameWeird.notify("skipped", this.#here);
       return;
     }
     if (typeBeats(parent) && parent.beforeEach) {
       parent.beforeEach();
     }
-    this.beatDo.notify(beat, this);
+    this.beforeBeat.notify(beat);
     beat.do();
   }
 
