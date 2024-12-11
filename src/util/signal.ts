@@ -7,7 +7,6 @@ export type Listener<P extends Params = any[]> = (...args: P) => void;
 export default class Signal<P extends Params = Params> {
   #sending = 0;
   #listeners: (undefined | Listener<P>)[] = [];
-  boundAdd = this.add.bind(this);
   constructor(public name: string | symbol = Symbol()) {}
   notify(...args: P) {
     this.#notify(this, args);

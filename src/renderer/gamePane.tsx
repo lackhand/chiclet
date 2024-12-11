@@ -30,7 +30,13 @@ export default function GamePane({}): React.JSX.Element {
 }
 function useFG() {
   return useSyncExternalStore(
-    actor.plugin.onFG.boundAdd,
+    useCallback((cb) =>
+      actor.plugin.onFG.add(() => {
+        // Give me time to read it!
+        exec.trapUser();
+        cb();
+      })
+    ),
     useCallback(() => actor.plugin.fg, [])
   );
 }
