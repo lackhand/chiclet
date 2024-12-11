@@ -60,3 +60,5 @@ export default function plugin<T extends Plugin>(ctor: Ctor<T>): T {
 }
 plugin.engine = () => plugins;
 plugin.add = <T extends Plugin>(plugin: T): T => (plugins.add(plugin), plugin);
+
+(window as any).chiclet = plugin;

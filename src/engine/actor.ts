@@ -1,7 +1,7 @@
 import unwrap, { Source, SourceObject } from "@/src/util/lazy";
 import plugin from "./plugins";
 import type { At } from "./stage";
-import { all, Beat, Beats } from "./beats";
+import { of, Beat, Beats } from "./beats";
 import Signal from "../util/signal";
 import exec, { Key } from "./exec";
 
@@ -171,7 +171,7 @@ export interface BeatFactory {
 /// However, it's _also_ the scratch space for the actor's variables.
 export default function actor(key: Key): BeatFactory & Actor {
   const beatFactory = (...deltas: Delta[]): Beat => {
-    return all(
+    return of.all(
       ...deltas.map((delta) => ({ do: () => actors.act(key, delta) }))
     );
   };

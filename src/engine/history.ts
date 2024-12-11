@@ -1,6 +1,6 @@
 import plugin from "./plugins";
 import settings from "./settings";
-import ask, { type Choice } from "./ask";
+import ask from "./ask";
 import actor from "./actor";
 import Signal from "@/src/util/signal";
 import exec, { Key } from "./exec";
@@ -14,7 +14,6 @@ export interface Tell extends BaseHistoryEntry {
   key: Key;
   text: string;
 }
-
 export interface Ask extends BaseHistoryEntry {
   type: "ask";
   opts: string[];
@@ -39,15 +38,11 @@ export class History {
     actor.plugin.onAct.add(({ key, tell }) => {
       tell && this.#push({ type: "tell", key, text: tell });
     }),
-    ask.plugin.onAsk.add((choices: Choice[]) => {
-      let opts: string[] = [];
-      for (let choice of choices) {
-        opts[choice.key] = choice.text;
-      }
+    ask.plugin.onAsk.add((opts: string[]) => {
       this.#push({ type: "ask", opts });
     }),
-    ask.plugin.onAnswer.add((opt: Choice) => {
-      this.#push({ type: "answer", ...opt });
+    ask.plugin.onAnswer.add((key: number) => {
+      this.#push({ type: "answer", key, text: ask.plugin.asked?.[key] });
     }),
   ];
   #push(record: Partial<HistoryEntry>) {

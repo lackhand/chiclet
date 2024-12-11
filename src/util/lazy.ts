@@ -16,10 +16,16 @@ export default function unwrap<T>(v: Source<T>): Concrete<T> {
 }
 /** Slightly safer around undefines. */
 type Definite<T> = Exclude<T, undefined>;
-unwrap.or = function or<T>(
+unwrap.or = function unwrapOr<T>(
   v: Source<undefined | Definite<T>>
 ): undefined | Concrete<Definite<T>> {
   return unwrap(v);
+};
+unwrap.guard = function unwrapGuard(
+  v: undefined | Source<any>
+): undefined | boolean {
+  if (v === undefined) return undefined;
+  return !!unwrap(v);
 };
 
 type Resolve<T, V = void> = (value: T | PromiseLike<T>) => V;

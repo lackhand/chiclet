@@ -173,3 +173,7 @@ export function run<T>(t: T, cb: (t: T) => void): T {
   cb.call(t, t);
   return t;
 }
+
+export function millis(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}

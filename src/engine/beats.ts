@@ -1,14 +1,6 @@
 import unwrap, { Source } from "../util/lazy";
 import exec, { Path } from "./exec";
 
-/**
- * Utilities for each unit of execution in the `exec`.
- *
- *
- *
- *
- */
-
 export interface Beat {
   do(): void;
   if?(): boolean;
@@ -20,36 +12,47 @@ export function typeBeat(a: any): a is Beat {
   );
 }
 export interface Beats extends Beat {
-  get(key: number): Beat;
+  // If `children`, then we can do fancy stuff like `get`.
+  children?: Beat[];
+  // This is really only used in the `when` construct to run the first successful child.
   beforeEach?(): void;
+  // This could have been used to run a loop.
+  // But it isn't; we insert a synthetic last element for the loop and zip to the end of the list.
   afterAll?(): void;
 }
 export function typeBeats(a: any): a is Beats {
-  return (
-    typeBeat(a) &&
-    ((a = (a as Beats).get), "function" === typeof a && a.length === 1)
-  );
+  return typeBeat(a) && Array.isArray((a as Beats).children);
 }
 export function of(action: () => void, _if?: () => boolean): Beat {
   return Object.assign({ do: action }, _if && { if: _if });
 }
-/// Covenience to execute multiple statements in order (standard flow of control).
-/// Should be exactly equivalent to using an array.
-export function all(...beats: Beat[]): Beats {
+of.all = function ofAll(...children: Beat[]): Beats {
   return {
-    get(key: number) {
-      return beats[key];
-    },
+    children,
     do() {
       exec.pushChild(0);
     },
   };
+};
+of.unwrap = function ofUnwrap(src: Source<Beat | Beat[]>): Beat {
+  let concrete = unwrap(src);
+  if (Array.isArray(concrete)) {
+    return of.all(...concrete);
+  }
+  return concrete;
+};
+interface SceneBeat extends Beats {
+  name: string;
+  preload?(): void;
 }
-export function scene(name: string, ...beats: Beat[]): Beats {
+interface SceneBeatPreconfig extends Partial<SceneBeat> {
+  do?: never;
+  children?: never;
+}
+export function scene(prefix: SceneBeatPreconfig, ...children: Beat[]): Beats {
   return {
-    get(key: number) {
-      return beats[key];
-    },
+    ...prefix,
+    children,
     do() {
       console.log("starting scene", name);
       exec.pushChild(0);
@@ -59,30 +62,17 @@ export function scene(name: string, ...beats: Beat[]): Beats {
     },
   };
 }
-all.of = function allOf(source: () => Iterable<Beat>): Beats {
-  let beats: undefined | Beat[];
-  return {
-    get(key: number) {
-      return beats![key];
-    },
-    do() {
-      beats = Array.from(source());
-      exec.pushChild(0);
-    },
-  };
-};
+
 /// Convenience to execute the first beat which is non-null,
-export function when(...beats: Beat[]): Beats {
+export function when(...children: Beat[]): Beats {
   return {
-    get(key: number) {
-      return beats[key];
-    },
+    children,
     do() {
       exec.pushChild(0);
     },
     beforeEach() {
-      // This is called before each child, after any `if` conditional
-      // Soooo... We shouldn't continue!
+      // This is called before each child, **after** any `if` conditional
+      // Soooo... We shouldn't continue with that child's sibling!
       exec.pop();
     },
   };
@@ -94,19 +84,22 @@ function genericLoop(
   ...beats: Beat[]
 ): Beats & Beat {
   if (beats.length <= 0) {
-    return all();
+    return of.all();
   }
-  return {
-    get(key: number) {
-      return beats[key];
-    },
-    do() {
-      exec.pushChild(isDo ? 0 : Number.MAX_SAFE_INTEGER);
-    },
-    afterAll() {
-      if (unwrap(guard) ?? true) {
+  const children = [
+    ...beats,
+    {
+      do() {
+        if (false === unwrap(guard)) return;
+        exec.pop();
         exec.pushNext(0);
-      }
+      },
+    },
+  ];
+  return {
+    children,
+    do() {
+      exec.pushChild(isDo ? 0 : children.length - 1);
     },
   };
 }

@@ -1,12 +1,14 @@
-import { useSyncExternalStore } from "react";
-import ask, { Choice } from "../engine/ask";
+import { useCallback, useSyncExternalStore } from "react";
+import ask from "../engine/ask";
 
-const choose = ask.plugin.setAnswer.bind(ask.plugin);
+function choose(i: number) {
+  ask.plugin.setAnswer(i);
+}
 
-export default function useChoices(): [Choice[], (choice: number) => void] {
+export default function useChoices() {
   const choices = useSyncExternalStore(
-    (onChange: () => void) => ask.plugin.onAsk.add(onChange),
-    () => ask.plugin.choices
+    useCallback((onChange: () => void) => ask.plugin.onAsk.add(onChange), []),
+    useCallback(() => ask.plugin.asked, [])
   );
-  return [choices, choose];
+  return [choices, choose] as const;
 }

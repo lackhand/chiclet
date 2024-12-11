@@ -5,6 +5,7 @@ import loader from "./loader";
 import { Beat, typeBeats } from "./beats";
 import { channel } from "../util/promises";
 import Signal from "../util/signal";
+import unwrap from "../util/lazy";
 
 export type Key = number | string;
 export type Path<K = Key> = ReadonlyArray<K>;
@@ -34,7 +35,8 @@ export type Path<K = Key> = ReadonlyArray<K>;
  */
 export class Exec {
   #waitingForUser = false;
-  #userChannel = channel();
+  #waitingForSystem = 0;
+  #waitingChannel = channel();
 
   #stack = new Stack<Path>();
   #here = [] as Path;
@@ -61,12 +63,16 @@ export class Exec {
   trapUser() {
     this.#waitingForUser = true;
   }
+  trapSystem() {
+    this.#waitingForSystem++;
+  }
   userReady() {
-    const meaningful = this.#waitingForUser;
     this.#waitingForUser = false;
-    if (meaningful) {
-      this.#userChannel[1]();
-    }
+    this.#waitingChannel[1]();
+  }
+  systemReady() {
+    --this.#waitingForSystem;
+    this.#waitingChannel[1]();
   }
 
   import(src: any) {
@@ -81,6 +87,7 @@ export class Exec {
     }
     this.#here = here ?? [];
     this.#waitingForUser = !!waitingForUser;
+    // We can't modify waitingForSystem -- it's pretty likely that other plugins will themselves wait for system.
   }
 
   export(): object {
@@ -101,11 +108,11 @@ export class Exec {
     this.pushAbsolute(next);
   }
 
-  pushChild(key: Key): Path {
-    return this.pushAbsolute([...this.#here, key]);
+  pushChild(key: Key, from = this.#here): Path {
+    return this.pushAbsolute([...from, key]);
   }
 
-  pushRelative(key: Key): Path {
+  pushNamed(key: Key): Path {
     const module = this.here[0];
     return this.pushAbsolute([module, key, 0]);
   }
@@ -118,9 +125,9 @@ export class Exec {
   push(...keys: string[]): Path {
     switch (keys.length) {
       case 0:
-        return this.pushRelative("default");
+        return this.pushNamed("default");
       case 1:
-        return this.pushRelative(keys[0]);
+        return this.pushNamed(keys[0]);
       default:
         return this.pushAbsolute(keys);
     }
@@ -143,8 +150,8 @@ export class Exec {
         try {
           let beat = await loader.load(frame);
           this.doBeat(beat);
-          if (this.#waitingForUser) {
-            await this.#userChannel[0]();
+          while (this.#waitingForUser || this.#waitingForSystem) {
+            await this.#waitingChannel[0]();
           }
         } catch (e) {
           console.error(this, "Frame error", e);
@@ -160,7 +167,7 @@ export class Exec {
   private async doBeat(beat?: Beat) {
     const parent = loader.peekAt(-1);
     if (!beat) {
-      if (typeBeats(parent) && parent.afterAll) {
+      if (typeBeats(parent) && "function" === typeof parent.afterAll) {
         parent.afterAll();
       }
       this.onFrameWeird.notify("missing", this.#here);
@@ -169,11 +176,18 @@ export class Exec {
     // Restore the next frame, since there's something here to try.
     this.pushNext();
     this.#count++;
-    if (beat.if && !beat.if()) {
+    if (!(unwrap.guard(beat.if) ?? true)) {
       this.onFrameWeird.notify("skipped", this.#here);
       return;
     }
-    if (typeBeats(parent) && parent.beforeEach) {
+    if (typeBeats(parent) && "function" === typeof parent.beforeEach) {
+      console.log(
+        "Executing beforeEach",
+        this.#here,
+        beat,
+        "on its parent",
+        parent
+      );
       parent.beforeEach();
     }
     this.beforeBeat.notify(beat);
