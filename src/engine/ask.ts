@@ -1,6 +1,6 @@
 import unwrap, { Source } from "../util/lazy";
 import Signal from "../util/signal";
-import { Beat, Beats, of } from "./beats";
+import { Beat, Beats, ConditionalBeat, LabeledBeat, of } from "./beats";
 import exec from "./exec";
 import plugin, { Plugin } from "./plugins";
 
@@ -50,12 +50,15 @@ export class Ask implements Plugin {
     this.#asked = [];
     this.#answered = undefined;
     // In particular, the stack state is now something like:
-    // SomeScene -> Base -> SomeAsk -> SomeOpt
-    // SomeScene -> Base -> SomeAsk + 1
+    // SomeScene -> Base -> SomeAsk -> SomeOpt + 1  // standard execution state
+    // SomeScene -> Base -> SomeAsk  // because we force ourselves to loop, see `ask` above.
     // SomeScene -> Base + 1
     // We do _not_ want to continue to SomeOpt + 1!
-    // So: pop that out.
+    // So: pop off the top two levels:
     exec.pop();
+    const repeatAsk = exec.pop();
+    // and then
+    exec.pushNext(undefined, repeatAsk);
   }
 
   setAnswer(c: undefined | number) {
@@ -65,8 +68,8 @@ export class Ask implements Plugin {
     this.#answered = c;
     this.onAnswer.notify(c);
     console.log("Trying to setAnswer", c, "from", exec, "at", exec.here);
-    // Set the selected child -- JUST the child, since we'll clearAsk before the child actually executes.
-    // But mark userReady so we can proceed!
+    // We repeat the ask node until we like the result.
+    // So: remove that, push the next (to continue here), and also push the child that was selected.
     exec.pushChild(c);
     exec.userReady();
   }
@@ -74,9 +77,8 @@ export class Ask implements Plugin {
 
 const askPlugin = plugin.add(new Ask());
 
-export interface OptionBeat extends Beat {
-  label: Source<string>;
-}
+export interface OptionBeat extends LabeledBeat, ConditionalBeat {}
+
 export interface AskBeat extends Beats {}
 export default function ask(...children: OptionBeat[]): AskBeat {
   return {

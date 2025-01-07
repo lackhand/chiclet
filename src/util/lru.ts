@@ -1,15 +1,18 @@
-export default class LRU<K, V> {
-  private _map = new Map<K, V>();
-  private _max: number;
+export default class LRU<K, V = any> {
+  #map = new Map<K, V>();
+  #max: number;
   get max() {
-    return this._max;
+    return this.#max;
+  }
+  get size() {
+    return this.#map.size;
   }
   constructor(max = 10) {
-    this._max = max;
+    this.#max = max;
   }
 
   clear() {
-    this._map.clear();
+    this.#map.clear();
   }
 
   lookup(key: K, source: undefined | ((k: K) => undefined | V)) {
@@ -27,11 +30,9 @@ export default class LRU<K, V> {
   get(key: K): V | undefined;
   get(key: K, init?: () => V): V | undefined {
     let item = this.pop(key);
-    if (item === undefined && init) {
-      item = init();
-    }
+    item ??= init?.();
     if (item !== undefined) {
-      this._map.set(key, item);
+      this.#map.set(key, item);
     }
     return item;
   }
@@ -41,10 +42,10 @@ export default class LRU<K, V> {
     if (key === undefined) {
       return undefined;
     }
-    const item = this._map.get(key);
+    const item = this.#map.get(key);
     if (item !== undefined) {
       // refresh key
-      this._map.delete(key);
+      this.#map.delete(key);
     }
     return item;
   }
@@ -53,23 +54,36 @@ export default class LRU<K, V> {
     if (key === undefined) {
       return undefined;
     }
-    return this._map.get(key);
+    return this.#map.get(key);
   }
   set(key: K, val: V): V | undefined {
-    const old = this._map.get(key);
-    this._map.delete(key);
+    const old = this.#map.get(key);
+    this.#map.delete(key);
     // evict oldest
-    while (this._map.size >= this._max) {
-      this._map.delete(this.firstKey!);
+    while (this.#map.size >= this.#max) {
+      this.#map.delete(this.firstKey!);
     }
-    this._map.set(key, val);
+    this.#map.set(key, val);
     return old;
   }
 
   get firstKey(): K | undefined {
-    for (let k of this._map.keys()) {
+    for (let k of this.#map.keys()) {
       return k;
     }
     return undefined;
+  }
+
+  [Symbol.iterator]() {
+    return this.#map[Symbol.iterator]();
+  }
+  keys() {
+    return this.#map.keys();
+  }
+  values() {
+    return this.#map.values();
+  }
+  entries() {
+    return this.#map.entries();
   }
 }

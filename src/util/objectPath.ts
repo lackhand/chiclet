@@ -128,7 +128,7 @@ export function update<T, O extends Node<T>>(
   callback: (old: undefined | Node<T>) => O
 ): Node<O> {
   return visit(root, path.slice(0, -1), (parent, r) => {
-    const remainder = [...r, last(path)!];
+    const remainder = [...r, path.at(-1)!];
     const assign = remainder.shift() as string | number;
 
     const treeV = parent as Tree<T>;
@@ -180,9 +180,6 @@ export function* range(max: number, min = 0, stride = 1) {
     yield i;
   }
 }
-export function last<T>(arr: undefined | Readonly<T[]>) {
-  return arr && arr[arr.length - 1];
-}
 export function* reversed<T>(ts: undefined | Readonly<T[]>) {
   if (!ts) {
     return;
@@ -190,13 +187,4 @@ export function* reversed<T>(ts: undefined | Readonly<T[]>) {
   for (let i = ts.length - 1; i >= 0; --i) {
     yield ts[i];
   }
-}
-export function arrEq<A, B extends A>(
-  as: undefined | Readonly<A[]>,
-  bs: undefined | Readonly<B[]>
-): boolean {
-  if (as == undefined || bs == undefined) {
-    return false;
-  }
-  return as.length == bs.length && as.every((a, i) => a == bs[i]);
 }

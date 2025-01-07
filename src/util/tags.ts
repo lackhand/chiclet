@@ -1,4 +1,4 @@
-export function fmt(strs: ReadonlyArray<string>, ...args: any[]) {
+function format(strs: ReadonlyArray<string>, args: ReadonlyArray<any>) {
   let all = [] as string[];
   for (let i = 0; i < args.length; ++i) {
     all.push(strs[i]);
@@ -7,8 +7,14 @@ export function fmt(strs: ReadonlyArray<string>, ...args: any[]) {
   all.push(strs[strs.length - 1]);
   return all.join("");
 }
+export function fmt(strs: TemplateStringsArray, ...args: any[]) {
+  return format(strs, args);
+}
 export function raw(strs: TemplateStringsArray, ...args: any[]) {
-  return fmt(strs.raw, ...args);
+  return format(strs.raw, args);
+}
+export function err(strs: TemplateStringsArray, ...args: any[]): never {
+  throw new Error(format(strs, args));
 }
 
 function addString(all: string[], str: string, needsSpace: boolean): boolean {

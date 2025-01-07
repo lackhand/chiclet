@@ -1,9 +1,17 @@
 import unwrap, { Source } from "../util/lazy";
-import exec, { Path } from "./exec";
+import exec from "./exec";
 
 export interface Beat {
+  // Called when the node is visited onPush (when exec isn't popping).
   do(): void;
-  if?(): boolean;
+}
+export interface ConditionalBeat extends Beat {
+  // A conditional beat _without_ an `if` is just trivially true.
+  // We'll execute any `do` when the conditional is true (`unwrap(if) ?? true`).
+  if?: Source<boolean>;
+}
+export interface LabeledBeat extends Beat {
+  label: Source<string>;
 }
 export function typeBeat(a: any): a is Beat {
   return (
@@ -12,13 +20,9 @@ export function typeBeat(a: any): a is Beat {
   );
 }
 export interface Beats extends Beat {
-  // If `children`, then we can do fancy stuff like `get`.
   children?: Beat[];
-  // This is really only used in the `when` construct to run the first successful child.
-  beforeEach?(): void;
-  // This could have been used to run a loop.
-  // But it isn't; we insert a synthetic last element for the loop and zip to the end of the list.
-  afterAll?(): void;
+  // Overrides the default behavior of returnfrom.
+  next?: Source<boolean>;
 }
 export function typeBeats(a: any): a is Beats {
   return typeBeat(a) && Array.isArray((a as Beats).children);
@@ -34,104 +38,86 @@ of.all = function ofAll(...children: Beat[]): Beats {
     },
   };
 };
-of.unwrap = function ofUnwrap(src: Source<Beat | Beat[]>): Beat {
-  let concrete = unwrap(src);
-  if (Array.isArray(concrete)) {
-    return of.all(...concrete);
-  }
-  return concrete;
+export interface SceneBeat extends Beats {
+  // Called at the loader layer when this scene is first loaded.
+  onLoad?(): void;
+}
+
+type Prohibit<T, K extends keyof T> = { [P in K]?: never } & {
+  [P in keyof T]: T[P];
 };
-interface SceneBeat extends Beats {
-  name: string;
-  preload?(): void;
-}
-interface SceneBeatPreconfig extends Partial<SceneBeat> {
-  do?: never;
-  children?: never;
-}
-export function scene(prefix: SceneBeatPreconfig, ...children: Beat[]): Beats {
+type SceneBeatPreconfig = Prohibit<Partial<SceneBeat>, "do" | "children">;
+
+export function scene(
+  prefix: SceneBeatPreconfig,
+  ...children: Beat[]
+): SceneBeat {
   return {
     ...prefix,
     children,
     do() {
-      console.log("starting scene", name);
       exec.pushChild(0);
-    },
-    afterAll() {
-      console.log("ending scene", name);
     },
   };
 }
 
-/// Convenience to execute the first beat which is non-null,
-export function when(...children: Beat[]): Beats {
+/// Convenience to execute the first beat, and then skip the rest.
+/// using Conditional beats or whatever, this can sometimes be meaningful!
+export function first(...children: Beat[]): Beats {
   return {
     children,
     do() {
       exec.pushChild(0);
     },
-    beforeEach() {
-      // This is called before each child, **after** any `if` conditional
-      // Soooo... We shouldn't continue with that child's sibling!
-      exec.pop();
-    },
+    continueAfterFirst: false,
   };
 }
-// A 'while' loop. Resident on the stack. When it executes, it reinserts itself
-function genericLoop(
-  isDo: boolean,
-  guard: Source<boolean>,
-  ...beats: Beat[]
-): Beats & Beat {
-  if (beats.length <= 0) {
-    return of.all();
-  }
-  const children = [
-    ...beats,
-    {
-      do() {
-        if (false === unwrap(guard)) return;
-        exec.pop();
-        exec.pushNext(0);
-      },
-    },
-  ];
-  return {
-    children,
-    do() {
-      exec.pushChild(isDo ? 0 : children.length - 1);
-    },
-  };
-}
+
+/// While loop -- checks the guard, then executes. Forever.
 export function loop(guard: Source<boolean>, ...beats: Beat[]): Beats & Beat {
   return genericLoop(false, guard, ...beats);
 }
+/// Do/While style loop -- one free execute, then check the condition.
 loop.do = function loopDo(
   guard: Source<boolean>,
   ...beats: Beat[]
 ): Beats & Beat {
   return genericLoop(true, guard, ...beats);
 };
-loop.break = function loopBreak(count = 1): Beat {
+loop.continue = function loopContinue() {
   return {
     do() {
-      for (let i = 0; i < count; ++i) {
-        exec.pop();
-      }
+      exec.continue();
     },
   };
 };
-loop.continue = function loopContinue(count = 1): Beat {
+loop.break = function loopBreak() {
   return {
     do() {
-      let stacks: Path[] = [];
-      for (let i = 1; i < count; ++i) {
-        stacks.push(exec.pop()!); // Remove the indicated loop(s) (less one!).
-      }
-      // And then finally for the final popped loop, insert it anew.
-      let newFrame = [...exec.pop()!];
-      newFrame[newFrame.length - 1] = 0;
-      exec.pushAbsolute(newFrame);
+      exec.break();
     },
   };
 };
+
+// A 'while' loop. Resident on the stack. When it executes, it reinserts itself
+function genericLoop(
+  isDo: boolean,
+  guard: Source<boolean>,
+  ...beats: Beat[]
+): Beats & LabeledBeat {
+  const children = [
+    ...beats,
+    {
+      do() {
+        if (unwrap(guard) ?? true) exec.pushNext(0);
+      },
+    },
+  ];
+  return {
+    children,
+    label: "",
+    do() {
+      exec.pushChild(isDo ? 0 : children.length - 1);
+    },
+  };
+}

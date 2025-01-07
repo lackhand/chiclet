@@ -1,4 +1,4 @@
-import { last, reversed } from "./objectPath";
+import { reversed } from "./objectPath";
 
 export default class Stack<T> {
   // Scenes specified by the user.
@@ -6,6 +6,14 @@ export default class Stack<T> {
   get isEmpty(): boolean {
     return this.values.length == 0;
   }
+
+  get length() {
+    return this.values.length;
+  }
+  set length(len: number) {
+    this.values.length = len;
+  }
+
   push(frame: T) {
     this.values.push(frame);
   }
@@ -21,7 +29,7 @@ export default class Stack<T> {
     this.values.length = 0;
   }
   get peek(): undefined | T {
-    return last(this.values);
+    return this.values.at(-1);
   }
   pop(): undefined | T {
     return this.values.pop();

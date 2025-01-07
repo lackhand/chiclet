@@ -28,46 +28,54 @@ unwrap.guard = function unwrapGuard(
   return !!unwrap(v);
 };
 
-type Resolve<T, V = void> = (value: T | PromiseLike<T>) => V;
-type Reject = (reason?: any) => void;
-type Executor<T> = (resolve: Resolve<T>, reject: Reject) => void;
+/// The type of the params in a `then` method.
 type ThenCb<InT, OutT> =
   | ((value: InT) => OutT | PromiseLike<OutT>)
   | null
   | undefined;
-export class LazyPromise<T> extends Promise<T> {
-  #resolve?: Resolve<T>;
-  #reject?: Reject;
-  #executor?: Executor<T>;
-  constructor(executor: Executor<T>) {
-    super((resolve, reject) => {
-      this.#resolve = resolve;
-      this.#reject = reject;
+
+/// A promise whose executor directly exposes the resolve/reject handlers.
+export abstract class PartsPromise<T> extends Promise<T> {
+  protected parts!: {
+    resolve(t: T | PromiseLike<T>): void;
+    reject(reason: any): void;
+  };
+  static get [Symbol.species]() {
+    return Promise;
+  }
+  constructor() {
+    let parts = {} as PartsPromise<T>["parts"];
+    super((solve, ject) => {
+      parts.resolve = solve;
+      parts.reject = ject;
     });
-    this.#executor = executor;
+    this.parts = parts;
+  }
+}
+
+/// A promise which runs "later".
+export class LazyPromise<T> extends PartsPromise<T> {
+  private cb?: () => T;
+  constructor(cb: () => T) {
+    super();
+    this.cb = cb;
+  }
+  static of<V>(cb: () => V): LazyPromise<V> {
+    return new this(cb);
   }
   then<TResult1 = T, TResult2 = never>(
-    resolve: ThenCb<T, TResult1>,
-    reject: ThenCb<any, TResult2>
+    resolve?: ThenCb<T, TResult1>,
+    reject?: ThenCb<any, TResult2>
   ): Promise<TResult1 | TResult2> {
-    if (this.#executor && this.#resolve && this.#reject) {
+    let cb = this.cb;
+    if (cb) {
+      this.cb = undefined;
       try {
-        this.#executor(this.#resolve, this.#reject);
-      } finally {
-        this.#executor = undefined;
-        this.#resolve = undefined;
-        this.#reject = undefined;
+        this.parts.resolve(cb());
+      } catch (e) {
+        this.parts.reject(e);
       }
     }
     return super.then(resolve, reject);
   }
-}
-export function lazy<T>(cb: () => T): Promise<T> {
-  return new LazyPromise((resolve, reject) => {
-    try {
-      resolve(cb());
-    } catch (e) {
-      reject(e);
-    }
-  });
 }
